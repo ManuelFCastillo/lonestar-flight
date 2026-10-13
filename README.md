@@ -19,6 +19,19 @@ Vercel runs `node build.mjs`. Add `CESIUM_ION_TOKEN` under Project → Settings 
 
 The free ion Community plan includes 1,000 Google 3D Tiles root tile requests per month (about one per game start) for personal use.
 
+## Tests
+
+```bash
+npm install
+npx playwright install chromium
+npm test
+```
+
+- `npm run test:unit` runs the Node test runner against `src/game-core.js`, the dependency-free module that holds the flight math, HUD formatting, the pilot-assist decision table and the maneuver timelines, plus a check that `build.mjs` injects the token.
+- `npm run test:e2e` runs Playwright against the built page in headless Chromium. It boots the real Cesium viewer but swaps the city stream for a test hook (`window.__lsfFakeTiles`), so it needs no token and no Google tiles, then flies the jet with the keyboard: takeoff, throttle, roll, reset, pause, camera, smoke, assist, inverted pitch persistence, free-flight HUD.
+
+GitHub Actions runs both on every push and pull request (`.github/workflows/test.yml`).
+
 ## Controls
 
 Arrows pitch and roll · A/D rudder · W/S throttle · Space smoke · C camera · R reset · P pause · I invert pitch · M sound · F fullscreen

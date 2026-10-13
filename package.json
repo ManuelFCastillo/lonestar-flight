@@ -4,6 +4,12 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "dev": "node build.mjs && python3 -m http.server 8768 --bind 127.0.0.1 --directory dist"
+    "dev": "node build.mjs && node scripts/serve.mjs 8768",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"test/unit/*.test.cjs\"",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
   }
 }

@@ -178,11 +178,12 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 </div></div>
 
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Cesium.js"></script>
+<script src="game-core.js"></script>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const G=window.LSF,clamp=G.clamp;
 const C=Cesium;
 const V=(x,y,z)=>new C.Cartesian3(x,y,z);
 
@@ -193,9 +194,8 @@ if(!TOKEN){$('tokenbox').classList.add('on');$('goText').textContent='Token need
 $('tokenGo').addEventListener('click',()=>{const t=$('tokenIn').value.trim();if(!t)return;try{localStorage.setItem('ionToken',t);}catch(e){}location.reload();});
 
 // ---------- Austin, in meters above mean sea level; Cesium wants ellipsoid heights ----------
-const GEOID=-26.5;                       // EGM96 geoid height around Austin
 const ORIGIN={lat:30.2617,lon:-97.7453}; // Congress Avenue bridge
-const ell=msl=>msl+GEOID;
+const ell=G.ell;
 const enu=C.Transforms.eastNorthUpToFixedFrame(C.Cartesian3.fromDegrees(ORIGIN.lon,ORIGIN.lat,0));
 const enuInv=C.Matrix4.inverse(enu,new C.Matrix4());
 const enuRot=C.Matrix4.getMatrix3(enu,new C.Matrix3());
@@ -240,6 +240,7 @@ viewer.clock.currentTime=C.JulianDate.fromIso8601('2026-10-14T00:40:00Z');   // 
 scene.camera.frustum.fov=C.Math.toRadians(64);
 let tileset=null,tilesReady=false;
 async function loadCity(){
+  if(window.__lsfFakeTiles){tilesReady=true;enableGo();return;}   // test hook: fly without streaming the city
   if(!TOKEN)return;
   try{
     tileset=await C.createGooglePhotorealistic3DTileset({onlyUsingWithGoogleGeocoder:true});
@@ -359,7 +360,7 @@ $('bHelp').addEventListener('click',()=>{if(playing)setPaused(true);});
 function setMode(m){mode=m;$('mTour').setAttribute('aria-pressed',String(m==='tour'));$('mFree').setAttribute('aria-pressed',String(m==='free'));
   $('brief').innerHTML=m==='tour'?'Fly the tour: <b>Barton Springs</b>, a low bat run past the <b>Congress Avenue bridge</b>, over the <b>Capitol</b> dome and the <b>UT Tower</b>, out to <b>Mount Bonnell</b>, over the <b>Pennybacker</b> arch, back along the lake to <b>Longhorn Dam</b> and a smoke-on finale over <b>Auditorium Shores</b>.':'Follow the river, buzz the Capitol, chase the bats east, or climb into the Hill Country. No clock, no score. Just you and Austin at dusk.';}
 setMode('tour');
-const pref=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:v==='1';}catch(e){return d;}};
+const pref=(k,d)=>{try{return G.parsePref(localStorage.getItem(k),d);}catch(e){return d;}};
 const savePref=(k,v)=>{try{localStorage.setItem(k,v?'1':'0');}catch(e){}};
 function setAssist(on,say){assist=on;$('pAssist').classList.toggle('on',on);$('optAssist').checked=on;savePref('assist',on);if(say)toast(on?'Pilot assist on':'Pilot assist off. Good luck.');}
 function setInvert(on,say){invert=on;$('pInv').classList.toggle('on',on);$('optInvert').checked=on;savePref('invert',on);if(say)toast(on?'Pitch inverted: push forward to dive':'Pitch normal');}
@@ -377,7 +378,7 @@ $('bMenu').addEventListener('click',()=>{setPaused(false);playing=false;$('hud')
 $('bAgain').addEventListener('click',()=>{$('done').classList.remove('on');go();});
 $('bKeep').addEventListener('click',()=>{$('done').classList.remove('on');});
 let toastT=0;function toast(s){$('toast').textContent=s;$('toast').classList.add('on');toastT=2.4;}
-function fmt(t){const m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s;}
+const fmt=G.fmtClock;
 
 // ---------- flight model (body: x forward, y left, z up; local frame: east, north, up) ----------
 const tq=new C.Quaternion(),m3=new C.Matrix3(),tmpV=new C.Cartesian3();
@@ -391,9 +392,9 @@ const look={c1:undefined,c2:undefined,l40:undefined,r40:undefined,l70:undefined,
 const SLOTS=['c1','l40','c2','r40','c1','l70','c2','r70'];
 const SLOT_B={c1:0,c2:0,l40:0.7,r40:-0.7,l70:1.22,r70:-1.22},SLOT_F={c1:0.55,c2:1,l40:1,r40:1,l70:1,r70:1};   // bearing (+ = left), distance fraction
 function assistProbe(){
-  const hl=Math.hypot(fwd.x,fwd.y)||1,ux=fwd.x/hl,uy=fwd.y/hl,D=clamp(speed*1.6,150,330);
+  const hl=Math.hypot(fwd.x,fwd.y)||1,ux=fwd.x/hl,uy=fwd.y/hl,D=G.probeDistance(speed);
   if(groundTick%4!==0){const k=SLOTS[look.i%8];look.i++;const b=SLOT_B[k],f=SLOT_F[k],c=Math.cos(b),s=Math.sin(b);look[k]=groundAtLocal(pos.x+(ux*c-uy*s)*D*f,pos.y+(ux*s+uy*c)*D*f,pos.z);}
-  const pen=k=>{const h=look[k];return h===undefined?0:Math.max(0,h+12-(pos.z+fwd.z*D*SLOT_F[k]));};
+  const pen=k=>G.penalty(look[k],pos.z+fwd.z*D*SLOT_F[k]);
   return {center:Math.max(pen('c1'),pen('c2')),left:Math.min(pen('l40'),pen('l70')),right:Math.min(pen('r40'),pen('r70'))};
 }
 function startMnv(type,dir,say){mnv={type,t:0,dir:dir||1};if(say)toast(say);}
@@ -403,25 +404,20 @@ function step(dt){
   let rollIn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);
   let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);if(invert)pitchIn=-pitchIn;
   const yawIn=(K.KeyA?1:0)-(K.KeyD?1:0);
-  if(K.KeyW)throttle=clamp(throttle+dt*0.6,0,1);if(K.KeyS)throttle=clamp(throttle-dt*0.6,0,1);
-  const target=55+275*throttle;speed+=(target-speed)*Math.min(1,dt*0.55);
+  throttle=G.stepThrottle(throttle,K.KeyW,K.KeyS,dt);
   body(AX,fwd);body(AY,left);body(AZ,up);
   // pilot assist: scripted airshow maneuvers take the stick when something is in the way
   const rightZ=-left.z;                                  // right wing up means banked left
   assistAct=0;let rollRate=2.3,pitchRate=1.25,free=false,agility=clamp(speed/180,0.55,1.15);
   if(assist){
     const p=assistProbe();mnvCool-=dt;const agl=groundH===undefined?999:pos.z-groundH;
-    if(!mnv&&mnvCool<=0&&p.center>0){const side=p.left<=p.right?1:-1,sidePen=Math.min(p.left,p.right);
-      if(sidePen>20&&p.center>25)startMnv('pull',side,'Pull up!');else if(p.center<22&&agl>35)startMnv('barrel',side,'Barrel roll!');else startMnv('jink',side,side>0?'Break left!':'Break right!');}
+    if(!mnv&&mnvCool<=0){const m=G.chooseManeuver(p,agl);if(m)startMnv(m.type,m.dir,m.say);}
     assistAct=mnv?1:0;
-    if(mnv){mnv.t+=dt;const t=mnv.t,bankL=Math.asin(clamp(rightZ,-1,1)),levelDir=Math.sign(rightZ),RL=-1;agility=1;rollIn=0;pitchIn=0;   // RL: the roll input that banks left
-      if(mnv.type==='jink'){rollRate=4.5;pitchRate=2.2;if(t<0.35)rollIn=RL*mnv.dir;else if(t<1.2){pitchIn=1;rollIn=Math.abs(bankL)<1.45?RL*mnv.dir*0.4:0;}else if(t<1.7){rollIn=Math.abs(bankL)>0.1?levelDir:0;pitchIn=0.2;}else endMnv();}
-      else if(mnv.type==='barrel'){rollRate=5;pitchRate=1.6;if(t<1.3){rollIn=RL*mnv.dir;pitchIn=0.55;free=true;}else endMnv();}
-      else if(mnv.type==='pull'){rollRate=5.2;pitchRate=1.6;if(t<0.7)pitchIn=1;else if(t<1.9){rollIn=RL*mnv.dir;pitchIn=0.2;free=true;}else endMnv();}
-      else if(mnv.type==='vroll'){rollRate=5.5;pitchRate=1.8;if(t<1.15){rollIn=1;pitchIn=0.25;free=true;}else endMnv();}}
-    else{rollRate=2.6;pitchRate=1.3;if(agl<18&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
+    if(mnv){mnv.t+=dt;const bankL=Math.asin(clamp(rightZ,-1,1));const mi=G.maneuverInputs(mnv.type,mnv.t,mnv.dir,bankL,Math.sign(rightZ),-1);   // -1: the roll input that banks left here
+      if(mi.done)endMnv();else{agility=1;rollIn=mi.rollIn;pitchIn=mi.pitchIn;free=mi.free;rollRate=mi.rollRate;pitchRate=mi.pitchRate;}}
+    if(!mnv){rollRate=2.6;pitchRate=1.3;if(agl<18&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
   }
-  speed-=fwd.z*9.8*dt*0.9;speed=clamp(speed,45,340);
+  speed=G.stepSpeed(speed,throttle,fwd.z,dt);
   rotBody(AX,rollIn*rollRate*agility*dt);
   rotBody(AY,-pitchIn*pitchRate*agility*dt);
   rotBody(AZ,yawIn*0.6*dt);
@@ -434,19 +430,19 @@ function step(dt){
   body(AX,fwd);
   pos.x+=fwd.x*speed*dt;pos.y+=fwd.y*speed*dt;pos.z+=fwd.z*speed*dt;
   if(pos.z>ell(4500))pos.z=ell(4500);
-  const r=Math.hypot(pos.x,pos.y);
-  $('warn').classList.toggle('on',r>13000);
-  if(r>13000)rotWorld(AZ,((pos.x*fwd.y-pos.y*fwd.x)>0?-1:1)*0.5*dt);
-  if(r>15000){spawn();toast('Back over Zilker');}
+  const bnd=G.boundary(pos.x,pos.y);
+  $('warn').classList.toggle('on',bnd!=='ok');
+  if(bnd!=='ok')rotWorld(AZ,((pos.x*fwd.y-pos.y*fwd.x)>0?-1:1)*0.5*dt);
+  if(bnd==='respawn'){spawn();toast('Back over Zilker');}
   // ground: sample the tiles under the jet every few frames
-  groundTick++;if(groundTick%4===0){const c=C.Cartographic.fromCartesian(toWorld(pos,tmpV));const h=sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));if(h!==undefined){groundH=h;floorH=floorH===undefined?h:Math.min(h,floorH+1.5);}}   // floorH rises slowly: it tracks terrain, not rooftops
+  groundTick++;if(groundTick%4===0){const c=C.Cartographic.fromCartesian(toWorld(pos,tmpV));const h=sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));if(h!==undefined){groundH=h;floorH=G.trackFloor(floorH,h);}}   // floorH rises slowly: it tracks terrain, not rooftops
   const agl=groundH===undefined?999:pos.z-groundH;
   if(assist){ // hard floor on the terrain only; a building you fail to dodge is passed through, not climbed over
     if(floorH!==undefined&&pos.z<floorH+8)pos.z=floorH+8;
   }else if(agl<4){crash();return;}
   if(smokeOn){const tail=V(pos.x-fwd.x*8-up.x*0.3,pos.y-fwd.y*8-up.y*0.3,pos.z-fwd.z*8-up.z*0.3);const n=Math.max(1,Math.round(speed*dt/2.2));for(let i=0;i<n;i++){emitSmoke(V(tail.x-fwd.x*i*2.2,tail.y-fwd.y*i*2.2,tail.z-fwd.z*i*2.2));}}
   if(mode==='tour'&&!finished){elapsed+=dt;const g=GATES[gate];g.ent.show=true;g.ent.polyline.material=RING;if(GATES[gate+1]){GATES[gate+1].ent.show=true;GATES[gate+1].ent.polyline.material=RING_DIM;}
-    const d=C.Cartesian3.distance(pos,g.local);if(d<g.r+7){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
+    const d=C.Cartesian3.distance(pos,g.local);if(G.gateHit(d,g.r)){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
       if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
@@ -479,11 +475,11 @@ scene.preUpdate.addEventListener(()=>{
   for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;s.b.color=new C.Color(1,0.96,0.92,0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
   if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16:0;engFilter.frequency.value=260+throttle*1900;whine.frequency.value=80+throttle*150;}
   if(playing){
-    updateCamera(dt);
-    $('spd').textContent=Math.round(speed*1.944);$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*3.281);
-    const hdg=(Math.atan2(fwd.x,fwd.y)*180/Math.PI+360)%360;$('hdg').textContent=('00'+Math.round(hdg)).slice(-3);
+    updateCamera(dt);window.__lsfClimb=fwd.z;   // test probe
+    $('spd').textContent=Math.round(speed*G.KT_PER_MS);$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*G.FT_PER_M);
+    const hdg=G.headingDeg(fwd.x,fwd.y);$('hdg').textContent=G.fmtHeading(hdg);
     $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
-    if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const b=(Math.atan2(dx,dy)*180/Math.PI+360)%360;let rel=b-hdg;rel=((rel+540)%360)-180;$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;const dist=Math.hypot(dx,dy);$('gDist').textContent=dist>=1000?(dist/1000).toFixed(1)+' km':Math.round(dist)+' m';const dz=g.local.z-pos.z;$('gVert').textContent=dz>40?'▲ climb':dz<-40?'▼ descend':'';}
+    if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
   }else{ // idle: slow orbit over downtown
     idleA+=dt*0.04;const cx=-600+Math.cos(idleA)*1800,cy=1200+Math.sin(idleA)*1800;const c=V(cx,cy,ell(600));toWorld(c,camDest);const d=V(0-cx,900-cy,ell(200)-c.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});partEntities.forEach(e=>e.show=false);

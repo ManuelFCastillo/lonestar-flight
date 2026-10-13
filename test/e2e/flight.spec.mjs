@@ -1,0 +1,116 @@
+// End-to-end: boots the real page in headless Chromium with Cesium, but with the city stream replaced by a test
+// hook (window.__lsfFakeTiles) so no ion token and no Google tiles are needed. Flies the jet with the keyboard.
+import { test, expect } from '@playwright/test';
+
+const hud = (page, id) => page.locator('#' + id);
+const num = async (page, id) => Number((await hud(page, id).textContent()).replace(/[^\d.-]/g, ''));
+const hold = async (page, key, ms) => { await page.keyboard.down(key); await page.waitForTimeout(ms); await page.keyboard.up(key); };
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { window.__lsfFakeTiles = true; });
+  page.on('pageerror', (e) => { throw new Error('page error: ' + e.message); });
+  await page.goto('/');
+  await expect(page.locator('#goText')).toHaveText('Take off');
+});
+
+async function takeOff(page) {
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#hud')).toHaveClass(/on/);
+  await expect.poll(() => num(page, 'spd')).toBeGreaterThan(100);
+}
+
+test('start screen: title, two modes, brief follows the mode, token prompt when unconfigured', async ({ page }) => {
+  await expect(page).toHaveTitle(/Lone Star Flight/);
+  await expect(page.locator('#mTour')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#brief')).toContainText('Barton Springs');
+  await page.locator('#mFree').click();
+  await expect(page.locator('#mFree')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#brief')).toContainText('No clock');
+  await expect(page.locator('#tokenbox')).toBeVisible();   // this build has no token baked in
+});
+
+test('Enter takes off; speed, clock and the first gate come alive', async ({ page }) => {
+  await takeOff(page);
+  await expect(page.locator('#gName')).toHaveText('Barton Springs');
+  await expect(page.locator('#gIdx')).toHaveText('Gate 1 / 8');
+  await expect(page.locator('#hdg')).toHaveText('090');          // spawn heads east over Zilker
+  const t0 = await page.locator('#clock').textContent();
+  await page.waitForTimeout(1500);
+  expect(await page.locator('#clock').textContent()).not.toBe(t0);
+});
+
+test('W and S run the throttle', async ({ page }) => {
+  await takeOff(page);
+  const width = () => page.locator('#thr').evaluate((el) => parseFloat(el.style.width));
+  const start = await width();
+  await hold(page, 'KeyW', 700);
+  expect(await width()).toBeGreaterThan(start);
+  await hold(page, 'KeyS', 1500);
+  expect(await width()).toBeLessThan(start);
+});
+
+test('rolling left turns the jet; R puts it back', async ({ page }) => {
+  await takeOff(page);
+  await hold(page, 'ArrowLeft', 500);
+  await page.waitForTimeout(1200);
+  const h = await num(page, 'hdg');
+  expect(h).not.toBe(90);
+  await page.keyboard.press('KeyR');
+  await expect(page.locator('#hdg')).toHaveText('090');
+});
+
+test('P pauses with the controls card and Escape resumes', async ({ page }) => {
+  await takeOff(page);
+  await page.keyboard.press('KeyP');
+  await expect(page.locator('#pause')).toHaveClass(/on/);
+  const frozen = await page.locator('#clock').textContent();
+  await page.waitForTimeout(1500);
+  expect(await page.locator('#clock').textContent()).toBe(frozen);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pause')).not.toHaveClass(/on/);
+});
+
+test('C swaps chase and cockpit, Space pours smoke, X drops the assist', async ({ page }) => {
+  await takeOff(page);
+  await page.keyboard.press('KeyC');
+  await expect(page.locator('#pCam')).toHaveText('Cockpit');
+  await page.keyboard.press('Space');
+  await expect(page.locator('#pSmoke')).toHaveClass(/on/);
+  await expect(page.locator('#pAssist')).toHaveClass(/on/);
+  await page.keyboard.press('KeyX');
+  await expect(page.locator('#pAssist')).not.toHaveClass(/on/);
+  await expect(page.locator('#toast')).toContainText('assist off');
+});
+
+test('inverted pitch is a checkbox, mirrors the I key, and survives a reload', async ({ page }) => {
+  await expect(page.locator('#optInvert')).not.toBeChecked();
+  await page.locator('#optInvert').check();
+  await takeOff(page);
+  await expect(page.locator('#pInv')).toHaveClass(/on/);
+  await page.keyboard.press('KeyI');
+  await expect(page.locator('#pInv')).not.toHaveClass(/on/);
+  await page.keyboard.press('KeyI');
+  await page.reload();
+  await expect(page.locator('#optInvert')).toBeChecked();
+});
+
+test('inverted pitch flips the arrow keys', async ({ page }) => {
+  // Altitude is unavailable without the city, so read the climb rate the page exposes for tests (vertical part of the nose vector).
+  await takeOff(page);
+  await hold(page, 'ArrowUp', 600);
+  const normalClimb = await page.evaluate(() => window.__lsfClimb);
+  await page.keyboard.press('KeyR');
+  await page.keyboard.press('KeyI');
+  await expect(page.locator('#pInv')).toHaveClass(/on/);
+  await hold(page, 'ArrowUp', 600);
+  const invertedClimb = await page.evaluate(() => window.__lsfClimb);
+  expect(normalClimb).toBeGreaterThan(0.05);
+  expect(invertedClimb).toBeLessThan(-0.05);
+});
+
+test('free flight hides the gate panel and the clock', async ({ page }) => {
+  await page.locator('#mFree').click();
+  await takeOff(page);
+  await expect(page.locator('#gate')).toBeHidden();
+  await expect(page.locator('#clock')).toBeHidden();
+});
