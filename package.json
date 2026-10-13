@@ -1,0 +1,9 @@
+{
+  "name": "lonestar-flight",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && python3 -m http.server 8768 --bind 127.0.0.1 --directory dist"
+  }
+}

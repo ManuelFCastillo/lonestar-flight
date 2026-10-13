@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lone Star Flight · Austin</title>
+<meta name="description" content="Fly a jet over the real Austin at dusk. Keyboard only.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Public+Sans:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Widgets/widgets.css">
+<style>
+:root{--bg:#121a2b;--fg:#f4eee2;--muted:#b9b1a3;--accent:#e2702a;--gold:#f2c230;--panel:rgba(14,19,32,.82);--line:rgba(244,238,226,.16);--ok:#8bd69b;--display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;--body:'Public Sans',system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+#cesiumContainer{position:fixed;inset:0;outline:none}
+.cesium-widget-credits{position:fixed!important;left:50%!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%);font-size:10px;color:var(--muted);z-index:4;background:rgba(14,19,32,.55);padding:2px 8px;border-radius:3px}
+.cesium-credit-logoContainer img{height:16px}
+.cesium-widget-credits a{color:var(--fg)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#brand{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:18px;display:flex;align-items:center;gap:12px;z-index:5;pointer-events:none}
+#brand .mark{width:30px;height:30px;color:var(--gold)}
+#brand .t{font-family:var(--display);font-weight:900;font-size:22px;letter-spacing:.06em;line-height:1}
+#brand .s{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-top:3px}
+#tools{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:16px;display:flex;gap:8px;z-index:5}
+#tools button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:grid;place-items:center;font-size:13px;font-weight:600}
+#tools button[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
+#start{position:fixed;inset:0;z-index:10;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:24px;padding-block:80px 32px;padding-inline:clamp(16px,5vw,64px);background:linear-gradient(180deg,rgba(18,26,43,.55),rgba(18,26,43,.25) 50%,rgba(18,26,43,.75))}
+#start.hidden{display:none}
+.hero .eyebrow{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:12px}
+.hero .eyebrow::before{content:"";width:40px;height:1px;background:var(--gold)}
+.hero h1{font-family:var(--display);font-weight:900;font-size:clamp(56px,9vw,120px);line-height:.92;margin:14px 0 18px;text-wrap:balance;letter-spacing:.01em}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{max-width:34ch;font-size:16px;line-height:1.5;margin:0 0 20px}
+.hero .meta{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);display:flex;gap:22px;flex-wrap:wrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px;backdrop-filter:blur(8px);min-width:0}
+.card .step{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.mode{text-align:left;border:1px solid var(--line);background:rgba(244,238,226,.04);border-radius:4px;padding:14px 14px 12px;display:grid;gap:4px;position:relative;min-width:0}
+.mode .tag{position:absolute;top:10px;right:12px;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.mode .glyph{font-size:20px;color:var(--gold);line-height:1}
+.mode .n{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:.03em;line-height:1}
+.mode .d{font-size:12px;color:var(--muted);line-height:1.35}
+.mode[aria-pressed="true"]{border-color:var(--gold);background:rgba(242,194,48,.08)}
+.mode[aria-pressed="true"] .tag{color:var(--gold)}
+.brief{font-size:13px;line-height:1.5;margin:0 0 14px;min-height:3.9em}
+.brief b{color:var(--gold);font-weight:600}
+#go{width:100%;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--gold);background:var(--gold);color:#1a1405;border-radius:4px;padding:14px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.06em}
+#go:disabled{background:transparent;color:var(--muted);border-color:var(--line);cursor:wait}
+#go span:last-child{font-size:20px}
+.keys{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px 12px;font-size:11px;color:var(--muted);min-width:0}
+.keys div{display:flex;align-items:center;gap:6px;white-space:nowrap}
+kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:3px 5px;color:var(--fg);background:rgba(244,238,226,.06)}
+.note{font-size:11px;color:var(--muted);margin-top:12px}
+.opt{display:flex;gap:10px;align-items:flex-start;font-size:12px;line-height:1.4;color:var(--muted);margin-top:14px;cursor:pointer}
+.opt input{accent-color:var(--gold);margin:2px 0 0;width:16px;height:16px;flex:none}
+.opt b{color:var(--fg);font-weight:600}
+#tokenbox{display:none;margin-top:12px;border:1px solid var(--accent);border-radius:4px;padding:10px;font-size:12px}
+#tokenbox.on{display:block}
+#tokenbox input{width:100%;box-sizing:border-box;margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:3px;background:rgba(0,0,0,.3);color:var(--fg);font:12px var(--body)}
+#tokenbox button{margin-top:8px;border:1px solid var(--line);background:rgba(244,238,226,.06);border-radius:3px;padding:6px 10px;font-size:12px}
+#tokenbox a{color:var(--gold)}
+#touchnote{display:none;color:var(--accent)}
+@media (pointer:coarse){#touchnote{display:block}}
+@media (max-width:820px){#start{grid-template-columns:1fr;align-content:start;overflow:auto;gap:18px}.hero h1{font-size:clamp(48px,14vw,80px)}.keys{grid-template-columns:1fr 1fr}}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:4;display:none;font-variant-numeric:tabular-nums}
+#hud.on{display:block}
+.ro{position:fixed;bottom:calc(30px + env(safe-area-inset-bottom,0px));display:flex;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+.ro.left{left:18px}.ro.right{right:18px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 36px)}
+@media (max-width:960px){.ro.right{bottom:calc(112px + env(safe-area-inset-bottom,0px))}}
+.ro .k{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.ro .v{font-family:var(--display);font-weight:700;font-size:26px;line-height:1;margin-top:3px}
+.ro .u{font-size:10px;color:var(--muted);margin-left:2px}
+.bar{width:90px;height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:50%;background:var(--gold)}
+.pill{font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 8px;border:1px solid var(--line);border-radius:3px;color:var(--muted)}
+.pill.on{color:var(--gold);border-color:var(--gold)}
+.pill.act{color:#1a1405;background:var(--gold)}
+#gate{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 14px;max-width:calc(100vw - 32px)}
+#gate .arrow{width:26px;height:26px;color:var(--gold);transition:transform .08s linear}
+#gate .n{font-family:var(--display);font-weight:700;font-size:20px;line-height:1;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#gate .d{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+#gate .vd{font-size:11px;color:var(--gold);margin-left:4px}
+#gate.free{display:none}
+#clock{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:18px;font-family:var(--display);font-weight:700;font-size:22px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;line-height:1}
+#warn{position:fixed;top:36%;left:50%;transform:translateX(-50%);font-family:var(--display);font-weight:900;font-size:28px;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;opacity:0;transition:opacity .2s}
+#warn.on{opacity:1}
+#toast{position:fixed;bottom:120px;left:50%;transform:translate(-50%,10px);background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:10px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;opacity:0;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6;transition:opacity .4s}
+.modal{position:fixed;inset:0;z-index:9;display:none;place-items:center;background:rgba(18,26,43,.6);padding:16px}
+.modal.on{display:grid}
+.modal .card{width:min(520px,100%)}
+.modal h2{font-family:var(--display);font-weight:900;font-size:40px;line-height:1;margin:0 0 6px;letter-spacing:.03em}
+.modal .time{font-family:var(--display);font-weight:700;font-size:64px;line-height:1;color:var(--gold);margin:6px 0 10px}
+.modal p{margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.5}
+.modal .row{display:flex;gap:10px;flex-wrap:wrap}
+.modal .row button{flex:1;border:1px solid var(--line);background:rgba(244,238,226,.06);border-radius:4px;padding:12px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.04em}
+.modal .row button.primary{background:var(--gold);border-color:var(--gold);color:#1a1405}
+.gates{list-style:none;padding:0;margin:0 0 14px;display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:12px;color:var(--ok)}
+.gates li::before{content:"● "}
+@media (prefers-reduced-motion:reduce){#toast,#gate .arrow,#flash{transition:none}}
+</style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+
+<div id="brand">
+  <svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M16 3l3 10 10 1-8 6 3 10-8-6-8 6 3-10-8-6 10-1z"/></svg>
+  <div><div class="t">LONE STAR FLIGHT</div><div class="s">Austin, Texas</div></div>
+</div>
+<div id="tools">
+  <button id="bSound" aria-pressed="true" title="Sound (M)">M</button>
+  <button id="bHelp" title="Controls (P)">?</button>
+  <button id="bFull" title="Fullscreen (F)">⛶</button>
+</div>
+
+<section id="start" aria-label="Choose your flight">
+  <div class="hero">
+    <div class="eyebrow">Find your line</div>
+    <h1>Violet crown.<br><em>Your sky.</em></h1>
+    <p>Dusk over Lady Bird Lake. The bats are about to leave the Congress Avenue bridge. Take your place over the river.</p>
+    <div class="meta"><span>Real Austin</span><span>Keyboard only</span><span>Chase or cockpit view</span></div>
+  </div>
+  <div class="card">
+    <div class="step">01 / Choose your flight</div>
+    <div class="modes" role="group" aria-label="Flight mode">
+      <button class="mode" id="mTour" aria-pressed="true"><span class="tag">Landmark tour</span><span class="glyph">✦</span><span class="n">Capital sortie</span><span class="d">Eight gates from Barton Springs to the finale.</span></button>
+      <button class="mode" id="mFree" aria-pressed="false"><span class="tag">Freedom</span><span class="glyph">∞</span><span class="n">Free flight</span><span class="d">No gates, no clock. Just you and Austin.</span></button>
+    </div>
+    <p class="brief" id="brief"></p>
+    <button id="go" disabled><span id="goText">Streaming Austin…</span><span>↗</span></button>
+    <div class="keys">
+      <div><kbd>↑</kbd><kbd>↓</kbd> pitch</div><div><kbd>←</kbd><kbd>→</kbd> roll</div><div><kbd>A</kbd><kbd>D</kbd> rudder</div>
+      <div><kbd>W</kbd><kbd>S</kbd> throttle</div><div><kbd>Space</kbd> smoke</div><div><kbd>C</kbd> camera</div>
+      <div><kbd>X</kbd> pilot assist</div><div><kbd>R</kbd> reset</div><div><kbd>P</kbd> pause</div>
+      <div><kbd>I</kbd> invert pitch</div><div><kbd>M</kbd> sound</div><div><kbd>F</kbd> fullscreen</div>
+    </div>
+    <label class="opt"><input type="checkbox" id="optAssist" checked> <span><b>Pilot assist.</b> Fly at the skyline. A second before impact the jet takes the stick for one move: a knife-edge break around the tower, a barrel roll over it, or a pull-up when boxed in. Then it hands back. You cannot crash with it on. X toggles it in flight.</span></label>
+    <label class="opt"><input type="checkbox" id="optInvert"> <span><b>Inverted pitch.</b> Push forward to dive, pull back to climb, like a real stick: <kbd>↑</kbd> noses down, <kbd>↓</kbd> pulls up. I toggles it in flight.</span></label>
+    <div id="tokenbox">No Cesium ion token is configured for this build. Paste one from <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com</a> to stream the city; it stays in this browser only.
+      <input id="tokenIn" type="text" placeholder="eyJhbGciOi…" autocomplete="off" spellcheck="false" aria-label="Cesium ion access token"><button id="tokenGo">Use token</button></div>
+    <p class="note" id="status">Google Photorealistic 3D Tiles via Cesium ion. Buildings keep loading as you fly.</p>
+    <p class="note" id="touchnote">This needs a keyboard. Open it on a laptop or desktop to fly.</p>
+  </div>
+</section>
+
+<div id="hud">
+  <div id="gate"><svg class="arrow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l7 18-7-4-7 4z"/></svg><div><div class="n" id="gName"></div><div class="d"><span id="gIdx"></span> · <span id="gDist"></span><span class="vd" id="gVert"></span></div></div></div>
+  <div id="clock">0:00</div>
+  <div id="warn">Turn back</div>
+  <div class="ro left">
+    <div><div class="k">Speed</div><div class="v"><span id="spd">0</span><span class="u">kt</span></div></div>
+    <div><div class="k">Altitude</div><div class="v"><span id="alt">0</span><span class="u">ft AGL</span></div></div>
+    <div><div class="k">Heading</div><div class="v"><span id="hdg">090</span><span class="u">°</span></div></div>
+  </div>
+  <div class="ro right">
+    <div><div class="k">Throttle</div><div class="bar"><i id="thr"></i></div></div>
+    <span class="pill" id="pSmoke">Smoke</span>
+    <span class="pill on" id="pCam">Chase</span>
+    <span class="pill on" id="pAssist">Assist</span>
+    <span class="pill" id="pInv">Inverted</span>
+  </div>
+  <div id="toast"></div>
+</div>
+<div id="flash"></div>
+
+<div class="modal" id="pause"><div class="card">
+  <h2>Paused</h2>
+  <p>Arrows pitch and roll. A and D kick the rudder. W and S run the throttle. Space pours smoke. C swaps chase and cockpit. X toggles pilot assist. R puts you back over Zilker.</p>
+  <div class="row"><button class="primary" id="bResume">Back to the sky</button><button id="bMenu">Flights</button></div>
+</div></div>
+<div class="modal" id="done"><div class="card">
+  <h2>Tour complete</h2>
+  <div class="time" id="doneTime">0:00</div>
+  <ul class="gates" id="doneGates"></ul>
+  <p>Keep flying, or run it again for a better time.</p>
+  <div class="row"><button class="primary" id="bAgain">Fly it again</button><button id="bKeep">Keep flying</button></div>
+</div></div>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Cesium.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const C=Cesium;
+const V=(x,y,z)=>new C.Cartesian3(x,y,z);
+
+// ---------- token ----------
+let TOKEN='__CESIUM_ION_TOKEN__';
+if(TOKEN.indexOf('__')===0){TOKEN='';try{TOKEN=localStorage.getItem('ionToken')||'';}catch(e){}}
+if(!TOKEN){$('tokenbox').classList.add('on');$('goText').textContent='Token needed';}
+$('tokenGo').addEventListener('click',()=>{const t=$('tokenIn').value.trim();if(!t)return;try{localStorage.setItem('ionToken',t);}catch(e){}location.reload();});
+
+// ---------- Austin, in meters above mean sea level; Cesium wants ellipsoid heights ----------
+const GEOID=-26.5;                       // EGM96 geoid height around Austin
+const ORIGIN={lat:30.2617,lon:-97.7453}; // Congress Avenue bridge
+const ell=msl=>msl+GEOID;
+const enu=C.Transforms.eastNorthUpToFixedFrame(C.Cartesian3.fromDegrees(ORIGIN.lon,ORIGIN.lat,0));
+const enuInv=C.Matrix4.inverse(enu,new C.Matrix4());
+const enuRot=C.Matrix4.getMatrix3(enu,new C.Matrix3());
+const enuQ=C.Quaternion.fromRotationMatrix(enuRot);
+function toLocal(lon,lat,h){return C.Matrix4.multiplyByPoint(enuInv,C.Cartesian3.fromDegrees(lon,lat,h),new C.Cartesian3());}
+function toWorld(local,result){return C.Matrix4.multiplyByPoint(enu,local,result||new C.Cartesian3());}
+function toWorldVec(local,result){return C.Matrix4.multiplyByPointAsVector(enu,local,result||new C.Cartesian3());}
+
+// anchors: places whose ground height gets resolved from the streamed tiles once they load
+const ANCHORS=[];
+function anchor(o){o.local=toLocal(o.lon,o.lat,ell(o.msl));o.resolved=false;ANCHORS.push(o);return o;}
+
+const GATES=[
+ {n:'Barton Springs',lat:30.2639,lon:-97.7713,msl:150,agl:150,r:28},
+ {n:'Congress Avenue bridge, bat run',lat:30.2622,lon:-97.7453,msl:131,agl:28,r:16,low:true},
+ {n:'Texas Capitol',lat:30.2747,lon:-97.7404,msl:165,agl:170,r:28},
+ {n:'UT Tower',lat:30.2862,lon:-97.7394,msl:180,agl:190,r:28},
+ {n:'Mount Bonnell',lat:30.3210,lon:-97.7733,msl:238,agl:90,r:30},
+ {n:'Pennybacker Bridge',lat:30.3493,lon:-97.7968,msl:150,agl:95,r:30},
+ {n:'Longhorn Dam',lat:30.2497,lon:-97.7142,msl:130,agl:110,r:30},
+ {n:'Auditorium Shores finale',lat:30.2618,lon:-97.7505,msl:132,agl:110,r:30}
+].map(anchor);
+const LANDMARKS=[
+ ['Texas Capitol','1888 · sunset red granite',30.2747,-97.7404,165,110],['UT Tower','1937',30.2862,-97.7394,180,110],['Frost Bank Tower','the owl',30.2667,-97.7430,150,175],
+ ['The Independent','the Jenga tower',30.2662,-97.7533,150,220],['The Austonian','',30.2640,-97.7447,150,220],['Sixth & Guadalupe','263 m',30.2690,-97.7465,150,280],
+ ['Congress Ave Bridge','1.5 million bats',30.2617,-97.7453,131,30],['Barton Springs','68 degrees, always',30.2639,-97.7713,150,30],['Zilker Park','',30.2669,-97.7729,150,30],
+ ['Long Center','',30.2602,-97.7523,135,40],['Mount Bonnell','',30.3210,-97.7733,238,20],['Pennybacker Bridge','Loop 360',30.3493,-97.7968,150,80],
+ ['DKR Stadium','hook em',30.2836,-97.7325,180,70],['Moody Center','',30.2810,-97.7318,180,40],['Longhorn Dam','',30.2497,-97.7142,130,30],
+ ['Oracle','',30.2435,-97.7238,135,50],['Q2 Stadium','Austin FC',30.3880,-97.7196,230,50],['The Domain','',30.4010,-97.7254,250,120],
+ ['AUS','Austin-Bergstrom',30.1975,-97.6664,150,40],['COTA','Circuit of the Americas',30.1327,-97.6412,165,96],['Lady Bird Lake','',30.2550,-97.7300,131,20]
+].map(a=>anchor({n:a[0],s:a[1],lat:a[2],lon:a[3],msl:a[4],agl:a[5]}));
+const SPAWN=anchor({lat:30.2669,lon:-97.7760,msl:150,agl:330});
+
+// ---------- viewer ----------
+C.Ion.defaultAccessToken=TOKEN;
+C.RequestScheduler.maximumRequestsPerServer=24;
+const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:4,scene3DOnly:true});
+const scene=viewer.scene;
+scene.screenSpaceCameraController.enableInputs=false;
+scene.skyAtmosphere.hueShift=-0.06;scene.skyAtmosphere.saturationShift=0.1;scene.skyAtmosphere.brightnessShift=-0.1;
+viewer.clock.currentTime=C.JulianDate.fromIso8601('2026-10-14T00:40:00Z');   // 7:40 pm in Austin: violet crown hour
+scene.camera.frustum.fov=C.Math.toRadians(64);
+let tileset=null,tilesReady=false;
+async function loadCity(){
+  if(!TOKEN)return;
+  try{
+    tileset=await C.createGooglePhotorealistic3DTileset({onlyUsingWithGoogleGeocoder:true});
+    // streaming tuned for a camera that never stops: nearest tiles first, never drop requests mid-flight, keep what we just flew over
+    tileset.maximumScreenSpaceError=14;
+    tileset.cullRequestsWhileMoving=false;        // default true: skips requests while the camera moves, which is always
+    tileset.foveatedScreenSpaceError=false;       // default true: defers the edges of the view until the camera rests, which is never
+    tileset.dynamicScreenSpaceError=true;         // less detail far away, more nearby
+    tileset.cacheBytes=1024*1024*1024;tileset.maximumCacheOverflowBytes=512*1024*1024;
+    tileset.preloadWhenHidden=false;
+    scene.primitives.add(tileset);
+    tileset.initialTilesLoaded.addEventListener(()=>{tilesReady=true;enableGo();});
+    setTimeout(()=>{if(!tilesReady){tilesReady=true;enableGo();}},15000);
+  }catch(e){$('status').textContent='Could not start the Google 3D Tiles stream: '+(e&&e.message?e.message:e)+'. Check the ion token and that the Google tiles asset is enabled on the account.';$('status').style.color='var(--accent)';}
+}
+function enableGo(){$('go').disabled=false;$('goText').textContent='Take off';}
+loadCity();
+
+// ---------- the jet: entity parts in body frame (x forward, y left, z up) ----------
+const BLUE=C.Color.fromCssColorString('#14357f'),GOLD=C.Color.fromCssColorString('#f2c230'),GLASS=C.Color.fromCssColorString('#182238'),GREY=C.Color.fromCssColorString('#5a5a5a'),FLAME=C.Color.fromCssColorString('#ffa040');
+const pos=V(0,0,0),q=new C.Quaternion(0,0,0,1);        // local ENU position, body->ENU rotation
+let speed=150,throttle=0.6;
+const worldPos=new C.Cartesian3(),worldQ=new C.Quaternion();
+const fwd=V(1,0,0),left=V(0,1,0),up=V(0,0,1);
+// one primitive, its model matrix set in the same frame as the camera, so the jet never trails the view
+const VF=C.PerInstanceColorAppearance.VERTEX_FORMAT,ONE=V(1,1,1),inst=[];
+const rotY=a=>C.Quaternion.fromAxisAngle(C.Cartesian3.UNIT_Y,a),rotX=a=>C.Quaternion.fromAxisAngle(C.Cartesian3.UNIT_X,a);
+function part(offset,rotQ,geometry,color){inst.push(new C.GeometryInstance({geometry,modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(offset,rotQ||C.Quaternion.IDENTITY,ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(color)}}));}
+const boxG=d=>C.BoxGeometry.fromDimensions({dimensions:d,vertexFormat:VF});
+const cylG=(l,t,b)=>new C.CylinderGeometry({length:l,topRadius:t,bottomRadius:b,slices:12,vertexFormat:VF});
+part(V(0.2,0,0),rotY(Math.PI/2),cylG(13,0.55,1.15),BLUE);
+part(V(7.9,0,0),rotY(Math.PI/2),cylG(3.2,0.02,0.55),BLUE);
+part(V(-1,0,-0.2),null,boxG(V(4.6,13.2,0.28)),BLUE);
+part(V(1.6,0,-0.1),null,boxG(V(5,4.4,0.26)),BLUE);
+part(V(-2.4,0,0.1),null,boxG(V(0.8,13,0.1)),GOLD);
+part(V(-5.9,0,0.1),null,boxG(V(2.4,8,0.22)),BLUE);
+for(const s of [-1,1]){
+  part(V(-5.4,1.15*s,1.7),rotX(0.33*s),boxG(V(3.2,0.18,2.9)),BLUE);
+  part(V(-5.3,1.15*s,3.05),rotX(0.33*s),boxG(V(2.2,0.2,0.7)),GOLD);
+  part(V(-7.2,0.75*s,-0.1),rotY(Math.PI/2),cylG(1.4,0.5,0.55),GREY);
+  part(V(-8.0,0.75*s,-0.1),null,boxG(V(0.2,0.8,0.8)),FLAME);
+}
+part(V(3.2,0,0.95),null,new C.EllipsoidGeometry({radii:V(2.3,0.75,0.7),vertexFormat:VF,stackPartitions:10,slicePartitions:14}),GLASS);
+part(V(-2,0,-0.9),null,boxG(V(6,2.4,0.6)),GOLD);
+const jet=scene.primitives.add(new C.Primitive({geometryInstances:inst,appearance:new C.PerInstanceColorAppearance({translucent:false,closed:true}),asynchronous:false,allowPicking:true}));   // picking on, so the ground probe can exclude the jet
+const partEntities=[jet];
+function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());}
+
+// smoke: billboards sized in meters
+const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=g.createRadialGradient(32,32,2,32,32,30);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.5,'rgba(255,255,255,.45)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c;})();
+const smokeCol=scene.primitives.add(new C.BillboardCollection());
+const SMOKEN=320,smoke=[];
+for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({image:smokeImg,position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,color:new C.Color(1,0.95,0.9,0),show:false});smoke.push({b,age:9,life:1,p:V(0,0,0),v:V(0,0,0)});}
+let smokeIdx=0;
+function emitSmoke(local){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
+
+// bats: a stream leaving the bridge eastward along the river
+const batCol=scene.primitives.add(new C.PointPrimitiveCollection());
+const BATN=400,bats=[];const bridgeLocal=toLocal(-97.7453,30.2617,ell(131));
+for(let i=0;i<BATN;i++)bats.push(batCol.add({position:C.Cartesian3.ZERO,pixelSize:2.5,color:C.Color.fromCssColorString('#1a1410'),disableDepthTestDistance:0}));
+const batTmp=V(0,0,0);
+function updateBats(t){for(let i=0;i<BATN;i++){const p=(t*0.035+i/BATN)%1,j=i*0.37;let x,y,z;if(p<0.25){const u=p/0.25,ang=u*14+j,r=20+u*70;x=Math.cos(ang)*r;y=-Math.sin(ang)*r*0.5-40;z=6+u*48;}else{const u=(p-0.25)/0.75;x=u*4000+Math.sin(j*5)*40;y=-60-Math.sin(x/420+j)*70-x*0.12;z=50+Math.sin(x/230+j)*14+Math.sin(t*2.5+j)*3;}batTmp.x=bridgeLocal.x+x;batTmp.y=bridgeLocal.y+y;batTmp.z=bridgeLocal.z+z;bats[i].position=toWorld(batTmp,bats[i].position);}}
+
+// gates as glowing rings
+const RING=new C.PolylineGlowMaterialProperty({glowPower:0.25,color:GOLD}),RING_DIM=new C.PolylineGlowMaterialProperty({glowPower:0.25,color:GOLD.withAlpha(0.35)});
+function ringPositions(g,i){const nx=GATES[i+1]||GATES[i-1];const dx=nx.local.x-g.local.x,dy=nx.local.y-g.local.y;const L=Math.hypot(dx,dy)||1;const ux=-dy/L,uy=dx/L;const pts=[];for(let k=0;k<=40;k++){const a=k/40*Math.PI*2;pts.push(toWorld(V(g.local.x+ux*Math.cos(a)*g.r,g.local.y+uy*Math.cos(a)*g.r,g.local.z+Math.sin(a)*g.r)));}return pts;}
+GATES.forEach((g,i)=>{g.ent=viewer.entities.add({show:false,polyline:{positions:ringPositions(g,i),width:7,material:RING}});});
+function rebuildRing(g){g.ent.polyline.positions=ringPositions(g,GATES.indexOf(g));}
+
+// labels
+const labelCol=scene.primitives.add(new C.LabelCollection());
+LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toUpperCase()+(l.s?'\n'+l.s:''),font:'600 12px "Public Sans", sans-serif',fillColor:C.Color.fromCssColorString('#f4eee2'),outlineColor:new C.Color(0,0,0,0.9),outlineWidth:3,style:C.LabelStyle.FILL_AND_OUTLINE,horizontalOrigin:C.HorizontalOrigin.CENTER,verticalOrigin:C.VerticalOrigin.BOTTOM,disableDepthTestDistance:Number.POSITIVE_INFINITY,translucencyByDistance:new C.NearFarScalar(800,1,5000,0),scaleByDistance:new C.NearFarScalar(500,1,5000,0.7),show:false});});
+
+// resolve anchors against the streamed ground, a few per frame
+const cartoTmp=new C.Cartographic();
+const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol]);
+function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
+const gTmp=new C.Cartesian3();
+function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
+let anchorCursor=0;
+function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
+
+// ---------- state ----------
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,steer=0,climb=0,commit=null,assistT=0;
+let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
+const camPos=V(0,0,0);
+function spawn(){mnv=null;mnvCool=0;floorH=undefined;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
+spawn();toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
+
+// ---------- input ----------
+const PREVENT=new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyS','KeyA','KeyD']);
+window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e.target.type==='text')return;if(e.repeat&&PREVENT.has(e.code)){e.preventDefault();return;}K[e.code]=true;if(PREVENT.has(e.code))e.preventDefault();
+  if(!playing){if(e.code==='Enter'&&!$('go').disabled)go();return;}
+  if(e.code==='Space')smokeOn=!smokeOn;
+  if(e.code==='KeyC'){cam=cam==='chase'?'cockpit':'chase';$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';}
+  if(e.code==='KeyR')spawn();
+  if(e.code==='KeyI')setInvert(!invert,true);
+  if(e.code==='KeyX')setAssist(!assist,true);
+  if(e.code==='KeyM')toggleSound();
+  if(e.code==='KeyF')fullscreen();
+  if(e.code==='KeyP'||e.code==='Escape'){if($('done').classList.contains('on'))return;setPaused(!paused);}
+});
+window.addEventListener('keyup',e=>{K[e.code]=false;});
+window.addEventListener('blur',()=>{for(const k in K)K[k]=false;});
+
+// ---------- audio ----------
+let AC,engGain,engFilter,whine;
+function initAudio(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();const buf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const d=buf.getChannelData(0);let last=0;for(let i=0;i<d.length;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=last*3.5;}const src=AC.createBufferSource();src.buffer=buf;src.loop=true;engFilter=AC.createBiquadFilter();engFilter.type='lowpass';engFilter.frequency.value=300;engGain=AC.createGain();engGain.gain.value=0;src.connect(engFilter);engFilter.connect(engGain);engGain.connect(AC.destination);src.start();whine=AC.createOscillator();whine.type='sawtooth';whine.frequency.value=90;const wg=AC.createGain();wg.gain.value=0.05;const wf=AC.createBiquadFilter();wf.type='lowpass';wf.frequency.value=500;whine.connect(wf);wf.connect(wg);wg.connect(engGain);whine.start();}catch(e){AC=null;}}
+function ping(f,len){if(!AC||!soundOn)return;const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f||880;o.type='sine';const t=AC.currentTime;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.22,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+(len||0.5));o.connect(g);g.connect(AC.destination);o.start();o.stop(t+(len||0.5)+0.05);}
+function toggleSound(){soundOn=!soundOn;$('bSound').setAttribute('aria-pressed',String(soundOn));}
+$('bSound').addEventListener('click',toggleSound);
+function fullscreen(){const el=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
+$('bFull').addEventListener('click',fullscreen);
+$('bHelp').addEventListener('click',()=>{if(playing)setPaused(true);});
+
+// ---------- UI ----------
+function setMode(m){mode=m;$('mTour').setAttribute('aria-pressed',String(m==='tour'));$('mFree').setAttribute('aria-pressed',String(m==='free'));
+  $('brief').innerHTML=m==='tour'?'Fly the tour: <b>Barton Springs</b>, a low bat run past the <b>Congress Avenue bridge</b>, over the <b>Capitol</b> dome and the <b>UT Tower</b>, out to <b>Mount Bonnell</b>, over the <b>Pennybacker</b> arch, back along the lake to <b>Longhorn Dam</b> and a smoke-on finale over <b>Auditorium Shores</b>.':'Follow the river, buzz the Capitol, chase the bats east, or climb into the Hill Country. No clock, no score. Just you and Austin at dusk.';}
+setMode('tour');
+const pref=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:v==='1';}catch(e){return d;}};
+const savePref=(k,v)=>{try{localStorage.setItem(k,v?'1':'0');}catch(e){}};
+function setAssist(on,say){assist=on;$('pAssist').classList.toggle('on',on);$('optAssist').checked=on;savePref('assist',on);if(say)toast(on?'Pilot assist on':'Pilot assist off. Good luck.');}
+function setInvert(on,say){invert=on;$('pInv').classList.toggle('on',on);$('optInvert').checked=on;savePref('invert',on);if(say)toast(on?'Pitch inverted: push forward to dive':'Pitch normal');}
+$('optAssist').addEventListener('change',e=>setAssist(e.target.checked,false));
+$('optInvert').addEventListener('change',e=>setInvert(e.target.checked,false));
+setAssist(pref('assist',true),false);setInvert(pref('invert',false),false);
+$('mTour').addEventListener('click',()=>setMode('tour'));$('mFree').addEventListener('click',()=>setMode('free'));
+function go(){initAudio();if(AC&&AC.state==='suspended')AC.resume();$('start').classList.add('hidden');$('hud').classList.add('on');playing=true;paused=false;finished=false;gate=0;elapsed=0;spawn();smokeOn=false;
+  $('gate').classList.toggle('free',mode!=='tour');$('clock').style.display=mode==='tour'?'':'none';GATES.forEach(g=>g.ent.show=false);LANDMARKS.forEach(l=>l.lab.show=true);
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();toast(mode==='tour'?'Gate 1: Barton Springs':'Free flight over Austin');}
+$('go').addEventListener('click',go);
+function setPaused(p){paused=p;$('pause').classList.toggle('on',p);}
+$('bResume').addEventListener('click',()=>setPaused(false));
+$('bMenu').addEventListener('click',()=>{setPaused(false);playing=false;$('hud').classList.remove('on');$('start').classList.remove('hidden');LANDMARKS.forEach(l=>l.lab.show=false);});
+$('bAgain').addEventListener('click',()=>{$('done').classList.remove('on');go();});
+$('bKeep').addEventListener('click',()=>{$('done').classList.remove('on');});
+let toastT=0;function toast(s){$('toast').textContent=s;$('toast').classList.add('on');toastT=2.4;}
+function fmt(t){const m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s;}
+
+// ---------- flight model (body: x forward, y left, z up; local frame: east, north, up) ----------
+const tq=new C.Quaternion(),m3=new C.Matrix3(),tmpV=new C.Cartesian3();
+const AX=C.Cartesian3.UNIT_X,AY=C.Cartesian3.UNIT_Y,AZ=C.Cartesian3.UNIT_Z;
+function body(axis,out){C.Matrix3.fromQuaternion(q,m3);return C.Matrix3.multiplyByVector(m3,axis,out);}
+function rotBody(axis,a){C.Quaternion.fromAxisAngle(axis,a,tq);C.Quaternion.multiply(q,tq,q);}
+function rotWorld(axis,a){C.Quaternion.fromAxisAngle(axis,a,tq);C.Quaternion.multiply(tq,q,q);}
+// pilot assist: late, flashy evasions. Probe the flight path about a second ahead; when a building is in it,
+// break around it, barrel-roll over it, or pull up only when boxed in. Otherwise the stick is yours.
+const look={c1:undefined,c2:undefined,l40:undefined,r40:undefined,l70:undefined,r70:undefined,i:0};
+const SLOTS=['c1','l40','c2','r40','c1','l70','c2','r70'];
+const SLOT_B={c1:0,c2:0,l40:0.7,r40:-0.7,l70:1.22,r70:-1.22},SLOT_F={c1:0.55,c2:1,l40:1,r40:1,l70:1,r70:1};   // bearing (+ = left), distance fraction
+function assistProbe(){
+  const hl=Math.hypot(fwd.x,fwd.y)||1,ux=fwd.x/hl,uy=fwd.y/hl,D=clamp(speed*1.6,150,330);
+  if(groundTick%4!==0){const k=SLOTS[look.i%8];look.i++;const b=SLOT_B[k],f=SLOT_F[k],c=Math.cos(b),s=Math.sin(b);look[k]=groundAtLocal(pos.x+(ux*c-uy*s)*D*f,pos.y+(ux*s+uy*c)*D*f,pos.z);}
+  const pen=k=>{const h=look[k];return h===undefined?0:Math.max(0,h+12-(pos.z+fwd.z*D*SLOT_F[k]));};
+  return {center:Math.max(pen('c1'),pen('c2')),left:Math.min(pen('l40'),pen('l70')),right:Math.min(pen('r40'),pen('r70'))};
+}
+function startMnv(type,dir,say){mnv={type,t:0,dir:dir||1};if(say)toast(say);}
+function endMnv(){mnv=null;mnvCool=0.4;}
+function step(dt){
+  if(crashed>0){crashed-=dt;if(crashed<=0){spawn();$('flash').style.opacity=0;}return;}
+  let rollIn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);
+  let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);if(invert)pitchIn=-pitchIn;
+  const yawIn=(K.KeyA?1:0)-(K.KeyD?1:0);
+  if(K.KeyW)throttle=clamp(throttle+dt*0.6,0,1);if(K.KeyS)throttle=clamp(throttle-dt*0.6,0,1);
+  const target=55+275*throttle;speed+=(target-speed)*Math.min(1,dt*0.55);
+  body(AX,fwd);body(AY,left);body(AZ,up);
+  // pilot assist: scripted airshow maneuvers take the stick when something is in the way
+  const rightZ=-left.z;                                  // right wing up means banked left
+  assistAct=0;let rollRate=2.3,pitchRate=1.25,free=false,agility=clamp(speed/180,0.55,1.15);
+  if(assist){
+    const p=assistProbe();mnvCool-=dt;const agl=groundH===undefined?999:pos.z-groundH;
+    if(!mnv&&mnvCool<=0&&p.center>0){const side=p.left<=p.right?1:-1,sidePen=Math.min(p.left,p.right);
+      if(sidePen>20&&p.center>25)startMnv('pull',side,'Pull up!');else if(p.center<22&&agl>35)startMnv('barrel',side,'Barrel roll!');else startMnv('jink',side,side>0?'Break left!':'Break right!');}
+    assistAct=mnv?1:0;
+    if(mnv){mnv.t+=dt;const t=mnv.t,bankL=Math.asin(clamp(rightZ,-1,1)),levelDir=Math.sign(rightZ),RL=-1;agility=1;rollIn=0;pitchIn=0;   // RL: the roll input that banks left
+      if(mnv.type==='jink'){rollRate=4.5;pitchRate=2.2;if(t<0.35)rollIn=RL*mnv.dir;else if(t<1.2){pitchIn=1;rollIn=Math.abs(bankL)<1.45?RL*mnv.dir*0.4:0;}else if(t<1.7){rollIn=Math.abs(bankL)>0.1?levelDir:0;pitchIn=0.2;}else endMnv();}
+      else if(mnv.type==='barrel'){rollRate=5;pitchRate=1.6;if(t<1.3){rollIn=RL*mnv.dir;pitchIn=0.55;free=true;}else endMnv();}
+      else if(mnv.type==='pull'){rollRate=5.2;pitchRate=1.6;if(t<0.7)pitchIn=1;else if(t<1.9){rollIn=RL*mnv.dir;pitchIn=0.2;free=true;}else endMnv();}
+      else if(mnv.type==='vroll'){rollRate=5.5;pitchRate=1.8;if(t<1.15){rollIn=1;pitchIn=0.25;free=true;}else endMnv();}}
+    else{rollRate=2.6;pitchRate=1.3;if(agl<18&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
+  }
+  speed-=fwd.z*9.8*dt*0.9;speed=clamp(speed,45,340);
+  rotBody(AX,rollIn*rollRate*agility*dt);
+  rotBody(AY,-pitchIn*pitchRate*agility*dt);
+  rotBody(AZ,yawIn*0.6*dt);
+  const upS=up.z>=0?1:-1;   // inverted flips what "nose up" means in the world
+  if(!rollIn&&!mnv)rotBody(AX,(rightZ+(up.z<0?(rightZ>=0?1:-1)*0.5:0))*(assist?1.7:1.1)*dt);
+  if(!pitchIn&&!mnv)rotBody(AY,fwd.z*upS*(assist?0.5:0.35)*dt);
+  if(!free)rotBody(AY,upS*Math.max(0,1-speed/150)*0.55*dt);
+  if(!free)rotWorld(AZ,rightZ*0.95*(up.z>0?1:0.4)*dt);
+  C.Quaternion.normalize(q,q);
+  body(AX,fwd);
+  pos.x+=fwd.x*speed*dt;pos.y+=fwd.y*speed*dt;pos.z+=fwd.z*speed*dt;
+  if(pos.z>ell(4500))pos.z=ell(4500);
+  const r=Math.hypot(pos.x,pos.y);
+  $('warn').classList.toggle('on',r>13000);
+  if(r>13000)rotWorld(AZ,((pos.x*fwd.y-pos.y*fwd.x)>0?-1:1)*0.5*dt);
+  if(r>15000){spawn();toast('Back over Zilker');}
+  // ground: sample the tiles under the jet every few frames
+  groundTick++;if(groundTick%4===0){const c=C.Cartographic.fromCartesian(toWorld(pos,tmpV));const h=sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));if(h!==undefined){groundH=h;floorH=floorH===undefined?h:Math.min(h,floorH+1.5);}}   // floorH rises slowly: it tracks terrain, not rooftops
+  const agl=groundH===undefined?999:pos.z-groundH;
+  if(assist){ // hard floor on the terrain only; a building you fail to dodge is passed through, not climbed over
+    if(floorH!==undefined&&pos.z<floorH+8)pos.z=floorH+8;
+  }else if(agl<4){crash();return;}
+  if(smokeOn){const tail=V(pos.x-fwd.x*8-up.x*0.3,pos.y-fwd.y*8-up.y*0.3,pos.z-fwd.z*8-up.z*0.3);const n=Math.max(1,Math.round(speed*dt/2.2));for(let i=0;i<n;i++){emitSmoke(V(tail.x-fwd.x*i*2.2,tail.y-fwd.y*i*2.2,tail.z-fwd.z*i*2.2));}}
+  if(mode==='tour'&&!finished){elapsed+=dt;const g=GATES[gate];g.ent.show=true;g.ent.polyline.material=RING;if(GATES[gate+1]){GATES[gate+1].ent.show=true;GATES[gate+1].ent.polyline.material=RING_DIM;}
+    const d=C.Cartesian3.distance(pos,g.local);if(d<g.r+7){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
+      if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
+      else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
+}
+function crash(){crashed=1.3;$('flash').style.opacity=0.9;ping(120,0.8);toast('Splash. Back over Zilker.');smokeOn=false;}
+
+// ---------- camera ----------
+const camDest=new C.Cartesian3(),camDir=new C.Cartesian3(),camUp=new C.Cartesian3(),lookL=new C.Cartesian3(),desired=new C.Cartesian3();
+function updateCamera(dt){
+  body(AX,fwd);body(AZ,up);
+  const bodyVisible=cam!=='cockpit';partEntities.forEach(e=>e.show=bodyVisible);
+  if(cam==='cockpit'){desired.x=pos.x+fwd.x*2.5+up.x*1.3;desired.y=pos.y+fwd.y*2.5+up.y*1.3;desired.z=pos.z+fwd.z*2.5+up.z*1.3;C.Cartesian3.clone(desired,camPos);toWorld(camPos,camDest);toWorldVec(fwd,camDir);toWorldVec(up,camUp);}
+  else{desired.x=pos.x-fwd.x*30+up.x*6.5;desired.y=pos.y-fwd.y*30+up.y*6.5;desired.z=pos.z-fwd.z*30+up.z*6.5;if(crashed>0)C.Cartesian3.clone(camPos,desired);
+    const k=1-Math.exp(-dt*5);camPos.x+=(desired.x-camPos.x)*k;camPos.y+=(desired.y-camPos.y)*k;camPos.z+=(desired.z-camPos.z)*k;
+    if(groundH!==undefined&&camPos.z<groundH+5)camPos.z=groundH+5;
+    toWorld(camPos,camDest);lookL.x=pos.x+fwd.x*45;lookL.y=pos.y+fwd.y*45;lookL.z=pos.z+fwd.z*45+2;const d=V(lookL.x-camPos.x,lookL.y-camPos.y,lookL.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);
+    const u=V(up.x*0.35,up.y*0.35,up.z*0.35+0.65);C.Cartesian3.normalize(u,u);toWorldVec(u,camUp);}
+  C.Cartesian3.normalize(camDir,camDir);C.Cartesian3.normalize(camUp,camUp);
+  scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});
+}
+
+// ---------- per-frame ----------
+let last=performance.now(),T=0,idleA=0;
+const smokeTmp=new C.Cartesian3();
+scene.preUpdate.addEventListener(()=>{
+  const now=performance.now();const dt=Math.min(0.05,(now-last)/1000);last=now;
+  resolveAnchors();
+  if(playing&&!paused){step(dt);T+=dt;}
+  toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
+  updateBats(T+40);
+  for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;s.b.color=new C.Color(1,0.96,0.92,0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
+  if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16:0;engFilter.frequency.value=260+throttle*1900;whine.frequency.value=80+throttle*150;}
+  if(playing){
+    updateCamera(dt);
+    $('spd').textContent=Math.round(speed*1.944);$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*3.281);
+    const hdg=(Math.atan2(fwd.x,fwd.y)*180/Math.PI+360)%360;$('hdg').textContent=('00'+Math.round(hdg)).slice(-3);
+    $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
+    if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const b=(Math.atan2(dx,dy)*180/Math.PI+360)%360;let rel=b-hdg;rel=((rel+540)%360)-180;$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;const dist=Math.hypot(dx,dy);$('gDist').textContent=dist>=1000?(dist/1000).toFixed(1)+' km':Math.round(dist)+' m';const dz=g.local.z-pos.z;$('gVert').textContent=dz>40?'▲ climb':dz<-40?'▼ descend':'';}
+    if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
+  }else{ // idle: slow orbit over downtown
+    idleA+=dt*0.04;const cx=-600+Math.cos(idleA)*1800,cy=1200+Math.sin(idleA)*1800;const c=V(cx,cy,ell(600));toWorld(c,camDest);const d=V(0-cx,900-cy,ell(200)-c.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});partEntities.forEach(e=>e.show=false);
+  }
+});
+})();
+</script>
+</body>
+</html>
