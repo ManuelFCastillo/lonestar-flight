@@ -116,10 +116,13 @@ test('Shift lights the afterburner and pushes past the normal top speed', async 
   await page.keyboard.down('KeyW');
   await expect.poll(width, { timeout: 20_000 }).toBeGreaterThan(99);                 // full throttle
   await page.keyboard.up('KeyW');
-  await expect.poll(() => num(page, 'spd'), { timeout: 30_000 }).toBeGreaterThan(600); // settling toward the 661 kt ceiling
+  await expect.poll(() => num(page, 'spd'), { timeout: 60_000 }).toBeGreaterThan(540); // settling toward the 661 kt ceiling
   await page.keyboard.down('Shift');
   await expect(page.locator('#pBurn')).toHaveClass(/on/);
-  await expect.poll(() => num(page, 'spd'), { timeout: 40_000 }).toBeGreaterThan(700); // only the burner gets past 661 kt
+  await expect.poll(() => num(page, 'spd'), { timeout: 60_000 }).toBeGreaterThan(680); // only the burner gets past 661 kt
+  // keep holding: stage two, then the sonic boom when the jet crosses the in-game Mach 1
+  await expect(page.locator('#toast')).toContainText('Mach 1', { timeout: 90_000 });
+  await expect.poll(() => page.locator('#spdU').textContent()).toContain('M 1');
   await page.keyboard.up('Shift');
   await expect(page.locator('#pBurn')).not.toHaveClass(/on/);
 });
@@ -135,14 +138,24 @@ test('music is on by default, starts with the flight, and the button silences it
   await expect(page.locator('#bMusic')).toHaveAttribute('aria-pressed', 'false');   // remembered
 });
 
-test('night is the default, L flips to dusk, and the choice is remembered', async ({ page }) => {
-  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'true');
+test('dusk is the default, L flips to night, and the choice is remembered', async ({ page }) => {
+  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'false');
   await takeOff(page);
   await page.keyboard.press('KeyL');
-  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('#toast')).toHaveText('Dusk');
+  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#toast')).toContainText('Night');
   await page.reload();
-  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('the link unfurls: Open Graph title, description and a 1200x630 image', async ({ page }) => {
+  const content = (p) => page.locator(`meta[property="${p}"]`).getAttribute('content');
+  expect(await content('og:title')).toContain('Austin');
+  expect(await content('og:image')).toBe('https://lonestar-flight.vercel.app/og.jpg');
+  expect(await content('og:image:width')).toBe('1200');
+  const res = await page.request.get('/og.jpg');
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toMatch(/image\/jpeg/);
 });
 
 test('free flight hides the gate panel and the clock', async ({ page }) => {

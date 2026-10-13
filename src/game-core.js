@@ -24,19 +24,26 @@
   function boundary(x, y) { const r = Math.hypot(x, y); return r > 15000 ? 'respawn' : r > 13000 ? 'warn' : 'ok'; }
 
   // ---- engine ----
-  const VMAX = 340, VMAX_BURNER = 450, BURNER_BOOST = 110;   // m/s
-  function targetSpeed(throttle, burner) { return 55 + 275 * throttle + (burner ? BURNER_BOOST : 0); }
+  // Two-stage afterburner. Stage one is a nudge; hold it STAGE_T seconds and stage two opens the throttle for real.
+  // MACH1 is the in-game sound barrier: only stage two can cross it, and crossing it upward is the sonic boom.
+  const VMAX = 340, STAGE_T = 2.5, MACH1 = 400, SOUND_MS = 340;
+  const BURNER = { boost1: 60, boost2: 250, ceiling1: 395, ceiling2: 620 };
+  function burnerStage(burner, held) { return !burner ? 0 : held >= STAGE_T ? 2 : 1; }
+  function targetSpeed(throttle, burner, held) { const s = burnerStage(burner, held || 0); return 55 + 275 * throttle + (s === 2 ? BURNER.boost2 : s === 1 ? BURNER.boost1 : 0); }
+  function speedCeiling(burner, held) { const s = burnerStage(burner, held || 0); return s === 2 ? BURNER.ceiling2 : s === 1 ? BURNER.ceiling1 : VMAX; }
   function stepThrottle(t, up, down, dt) { if (up) t = clamp(t + dt * 0.6, 0, 1); if (down) t = clamp(t - dt * 0.6, 0, 1); return t; }
-  // climbRate: vertical component of the forward vector (-1..1). Diving gains speed, climbing bleeds it. Afterburner lifts the ceiling.
-  function stepSpeed(speed, throttle, climbRate, dt, burner) {
-    speed += (targetSpeed(throttle, burner) - speed) * Math.min(1, dt * 0.55);
+  // climbRate: vertical component of the forward vector (-1..1). Diving gains speed, climbing bleeds it.
+  function stepSpeed(speed, throttle, climbRate, dt, burner, held) {
+    speed += (targetSpeed(throttle, burner, held) - speed) * Math.min(1, dt * 0.55);
     speed -= climbRate * 9.8 * dt * 0.9;
-    return clamp(speed, 45, burner ? VMAX_BURNER : VMAX);
+    return clamp(speed, 45, speedCeiling(burner, held));
   }
+  function boomCrossing(prevSpeed, speed) { return prevSpeed < MACH1 && speed >= MACH1; }
+  function mach(speed) { return speed / SOUND_MS; }
 
   // ---- pilot assist ----
   const MARGIN = 12;                  // meters of clearance the probe demands above whatever it sees
-  function probeDistance(speed) { return clamp(speed * 1.6, 150, 330); }
+  function probeDistance(speed) { return clamp(speed * 1.6, 150, 950); }
   // How far (m) the sampled surface pokes above the predicted flight path there. 0 = clear.
   function penalty(surfaceH, pathZ) { return surfaceH === undefined ? 0 : Math.max(0, surfaceH + MARGIN - pathZ); }
   // Given probe penalties {center,left,right} and height above ground, pick one move or none.
@@ -77,5 +84,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, VMAX_BURNER, BURNER_BOOST, targetSpeed, stepThrottle, stepSpeed, MARGIN, probeDistance, penalty, chooseManeuver, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach, MARGIN, probeDistance, penalty, chooseManeuver, maneuverInputs, trackFloor, parsePref };
 });

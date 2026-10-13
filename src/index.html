@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Lone Star Flight · Austin</title>
 <meta name="description" content="Fly a jet over the real Austin at dusk. Keyboard only.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lone Star Flight">
+<meta property="og:title" content="Lone Star Flight · fly a jet over the real Austin">
+<meta property="og:description" content="Blue Angels style jet over Google's 3D Austin: Lady Bird Lake, the Capitol, UT Tower, Pennybacker. Eight-gate tour or free flight, pilot assist that flies the airshow for you, original soundtrack. Keyboard only.">
+<meta property="og:url" content="https://lonestar-flight.vercel.app/">
+<meta property="og:image" content="https://lonestar-flight.vercel.app/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A jet over downtown Austin and Lady Bird Lake at dusk, with the flight HUD">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Lone Star Flight · fly a jet over the real Austin">
+<meta name="twitter:description" content="Keyboard flight game over Google's 3D Austin. Eight-gate landmark tour, pilot assist, afterburner, original soundtrack.">
+<meta name="twitter:image" content="https://lonestar-flight.vercel.app/og.jpg">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;900&family=Public+Sans:wght@400;600&display=swap">
 <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Widgets/widgets.css">
 <style>
@@ -87,6 +100,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 #toast{position:fixed;bottom:120px;left:50%;transform:translate(-50%,10px);background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:10px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;opacity:0;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6;transition:opacity .4s}
+#diag{position:fixed;top:calc(118px + env(safe-area-inset-top,0px));left:18px;margin:0;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-variant-numeric:tabular-nums}
 .modal{position:fixed;inset:0;z-index:9;display:none;place-items:center;background:rgba(18,26,43,.6);padding:16px}
 .modal.on{display:grid}
 .modal .card{width:min(520px,100%)}
@@ -110,7 +124,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <div><div class="t">LONE STAR FLIGHT</div><div class="s">Austin, Texas</div></div>
 </div>
 <div id="tools">
-  <button id="bNight" aria-pressed="true" title="Night (L)">☾</button>
+  <button id="bNight" aria-pressed="false" title="Night (L)">☾</button>
   <button id="bMusic" aria-pressed="true" title="Music (N)">♪</button>
   <button id="bSound" aria-pressed="true" title="Sound (M)">M</button>
   <button id="bHelp" title="Controls (P)">?</button>
@@ -121,7 +135,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <div class="hero">
     <div class="eyebrow">Find your line</div>
     <h1>Violet crown.<br><em>Your sky.</em></h1>
-    <p>Night over Lady Bird Lake. The violet crown is up on the horizon and the bats are out. Take your place over the river.</p>
+    <p>Dusk over Lady Bird Lake. The bats are about to leave the Congress Avenue bridge. Take your place over the river.</p>
     <div class="meta"><span>Real Austin</span><span>Keyboard only</span><span>Soundtrack: Austin Afterburner</span></div>
   </div>
   <div class="card">
@@ -134,12 +148,14 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
     <button id="go" disabled><span id="goText">Streaming Austin…</span><span>↗</span></button>
     <div class="keys">
       <div><kbd>↑</kbd><kbd>↓</kbd> pitch</div><div><kbd>←</kbd><kbd>→</kbd> roll</div><div><kbd>A</kbd><kbd>D</kbd> rudder</div>
-      <div><kbd>W</kbd><kbd>S</kbd> throttle</div><div><kbd>Shift</kbd> afterburner</div><div><kbd>Space</kbd> smoke</div>
+      <div><kbd>W</kbd><kbd>S</kbd> throttle</div><div><kbd>Shift</kbd> afterburner, hold for Mach 1</div><div><kbd>Space</kbd> smoke</div>
       <div><kbd>C</kbd> camera</div><div><kbd>X</kbd> pilot assist</div><div><kbd>R</kbd> reset</div>
       <div><kbd>P</kbd> pause</div><div><kbd>I</kbd> invert pitch</div><div><kbd>N</kbd> music</div>
       <div><kbd>M</kbd> sound</div><div><kbd>L</kbd> night / dusk</div><div><kbd>F</kbd> fullscreen</div>
+      <div><kbd>V</kbd> diagnostics</div><div><kbd>Enter</kbd> take off</div><div></div>
     </div>
     <label class="opt"><input type="checkbox" id="optAssist" checked> <span><b>Pilot assist.</b> Fly at the skyline. A second before impact the jet takes the stick for one move: a knife-edge break around the tower, a barrel roll over it, or a pull-up when boxed in. Then it hands back. You cannot crash with it on. X toggles it in flight.</span></label>
+    <label class="opt"><input type="checkbox" id="optNight"> <span><b>Night.</b> The violet crown on the horizon and lit windows below, instead of dusk. L toggles it in flight.</span></label>
     <label class="opt"><input type="checkbox" id="optInvert"> <span><b>Inverted pitch.</b> Push forward to dive, pull back to climb, like a real stick: <kbd>↑</kbd> noses down, <kbd>↓</kbd> pulls up. I toggles it in flight.</span></label>
     <div id="tokenbox">No Cesium ion token is configured for this build. Paste one from <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com</a> to stream the city; it stays in this browser only.
       <input id="tokenIn" type="text" placeholder="eyJhbGciOi…" autocomplete="off" spellcheck="false" aria-label="Cesium ion access token"><button id="tokenGo">Use token</button></div>
@@ -153,7 +169,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <div id="clock">0:00</div>
   <div id="warn">Turn back</div>
   <div class="ro left">
-    <div><div class="k">Speed</div><div class="v"><span id="spd">0</span><span class="u">kt</span></div></div>
+    <div><div class="k">Speed</div><div class="v"><span id="spd">0</span><span class="u" id="spdU">kt</span></div></div>
     <div><div class="k">Altitude</div><div class="v"><span id="alt">0</span><span class="u">ft AGL</span></div></div>
     <div><div class="k">Heading</div><div class="v"><span id="hdg">090</span><span class="u">°</span></div></div>
   </div>
@@ -166,6 +182,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
     <span class="pill" id="pInv">Inverted</span>
   </div>
   <div id="toast"></div>
+  <pre id="diag" hidden></pre>
 </div>
 <div id="flash"></div>
 
@@ -242,11 +259,11 @@ const scene=viewer.scene;
 scene.screenSpaceCameraController.enableInputs=false;
 scene.skyAtmosphere.hueShift=-0.06;scene.skyAtmosphere.saturationShift=0.1;scene.skyAtmosphere.brightnessShift=-0.1;
 const DUSK_T=C.JulianDate.fromIso8601('2026-10-14T00:40:00Z'),NIGHT_T=C.JulianDate.fromIso8601('2026-10-14T04:30:00Z');   // 7:40 pm and 11:30 pm in Austin
-viewer.clock.currentTime=NIGHT_T;
+viewer.clock.currentTime=DUSK_T;
 scene.camera.frustum.fov=C.Math.toRadians(64);
-// Night: the tiles are daytime photos, so night is a full-screen grade. Darken and cool the city, let bright
+// Night (optional, L): the tiles are daytime photos, so night is a full-screen grade. Darken and cool the city, let bright
 // surfaces read as lit windows, and lay the violet crown along the horizon with a purple haze on distant buildings.
-let nightOn=true;
+let nightOn=false;
 const NIGHT_FS=`
 uniform sampler2D colorTexture;
 uniform sampler2D depthTexture;
@@ -270,10 +287,10 @@ void main(){
   vec3 col=sky?c.rgb*0.9:night;
   float band=exp(-max(elev,0.0)*7.0)*exp(-max(-elev,0.0)*16.0);
   float haze=sky?1.0:(1.0-exp(-dist/6500.0));
-  vec3 violet=vec3(0.60,0.27,0.92);
-  col+=violet*band*haze*0.85;
-  if(sky)col+=vec3(0.07,0.04,0.15)*(1.0-smoothstep(0.0,0.45,elev));
-  col=mix(col,vec3(0.20,0.11,0.34),haze*0.30*(1.0-float(sky)));
+  vec3 violet=vec3(0.52,0.30,0.80);
+  col+=violet*band*haze*0.55;
+  if(sky)col+=vec3(0.05,0.04,0.12)*(1.0-smoothstep(0.0,0.45,elev));
+  col=mix(col,vec3(0.16,0.11,0.26),haze*0.22*(1.0-float(sky)));
   out_FragColor=vec4(col,c.a);
 }`;
 scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:NIGHT_FS,uniforms:{u_night:()=>nightOn?1.0:0.0}}));
@@ -289,7 +306,8 @@ async function loadCity(){
     tileset.foveatedScreenSpaceError=false;       // default true: defers the edges of the view until the camera rests, which is never
     tileset.dynamicScreenSpaceError=false;        // moves each tile's detail target every frame as the camera moves: that is the LOD flicker
     tileset.skipLevelOfDetail=false;
-    tileset.cacheBytes=1024*1024*1024;tileset.maximumCacheOverflowBytes=512*1024*1024;
+    tileset.progressiveResolutionHeightFraction=0;   // default 0.3 loads a low-res pass first and then re-pops to full: one pop, not two
+    tileset.cacheBytes=2048*1024*1024;tileset.maximumCacheOverflowBytes=1024*1024*1024;   // a fast connection fills 1 GB in a minute and then churns
     tileset.preloadWhenHidden=false;
     scene.primitives.add(tileset);
     tileset.initialTilesLoaded.addEventListener(()=>{tilesReady=true;enableGo();});
@@ -330,7 +348,10 @@ const partEntities=[jet];
 // afterburner plumes: two translucent cones behind the nozzles, shown only while Shift is held
 const flameInst=[];for(const s of [-1,1])flameInst.push(new C.GeometryInstance({geometry:cylG(4.5,0.08,0.62),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.25,0.75*s,-0.1),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}}));
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:false}));flame.show=false;
-function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;}
+// vapor cone for the sonic boom: a white cone around the fuselage that fades out
+const coneMat=C.Material.fromType('Color',{color:new C.Color(1,1,1,0)});
+const cone=scene.primitives.add(new C.Primitive({geometryInstances:new C.GeometryInstance({geometry:new C.CylinderGeometry({length:7,topRadius:0.2,bottomRadius:4.6,slices:28,vertexFormat:C.MaterialAppearance.MaterialSupport.BASIC.vertexFormat}),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-1,0,0),rotY(Math.PI/2),ONE)}),appearance:new C.MaterialAppearance({material:coneMat,translucent:true,closed:false,faceForward:true,materialSupport:C.MaterialAppearance.MaterialSupport.BASIC}),asynchronous:false,allowPicking:false}));cone.show=false;
+function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;cone.modelMatrix=jet.modelMatrix;}
 
 // smoke: billboards sized in meters
 const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=g.createRadialGradient(32,32,2,32,32,30);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.5,'rgba(255,255,255,.45)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c;})();
@@ -360,23 +381,24 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
 const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol]);
-function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
+window.__lsf={scene,get tileset(){return tileset;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
+function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
 let anchorCursor=0;
 function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
 
 // ---------- state ----------
-const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,musicOn=true;
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,boomT=0,shake=0,musicOn=true;
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
 const camPos=V(0,0,0);
-function spawn(){mnv=null;mnvCool=0;floorH=undefined;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
+function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomT=0;shake=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
 spawn();toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
 
 // ---------- input ----------
 const PREVENT=new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyS','KeyA','KeyD']);
 window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e.target.type==='text')return;if(e.repeat&&PREVENT.has(e.code)){e.preventDefault();return;}K[e.code]=true;if(PREVENT.has(e.code))e.preventDefault();
-  if(!playing){if(e.code==='Enter'&&!$('go').disabled)go();return;}
+  if(!playing){if(e.code==='Enter'&&!$('go').disabled)go();if(e.code==='KeyL')setNight(!nightOn,false);return;}
   if(e.code==='Space')smokeOn=!smokeOn;
   if(e.code==='KeyC'){cam=cam==='chase'?'cockpit':'chase';$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';}
   if(e.code==='KeyR')spawn();
@@ -385,6 +407,7 @@ window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e
   if(e.code==='KeyM')toggleSound();
   if(e.code==='KeyN')setMusic(!musicOn,true);
   if(e.code==='KeyL')setNight(!nightOn,true);
+  if(e.code==='KeyV'){$('diag').hidden=!$('diag').hidden;}
   if(e.code==='KeyF')fullscreen();
   if(e.code==='KeyP'||e.code==='Escape'){if($('done').classList.contains('on'))return;setPaused(!paused);}
 });
@@ -395,6 +418,12 @@ window.addEventListener('blur',()=>{for(const k in K)K[k]=false;});
 let AC,engGain,engFilter,whine;
 function initAudio(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();const buf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const d=buf.getChannelData(0);let last=0;for(let i=0;i<d.length;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=last*3.5;}const src=AC.createBufferSource();src.buffer=buf;src.loop=true;engFilter=AC.createBiquadFilter();engFilter.type='lowpass';engFilter.frequency.value=300;engGain=AC.createGain();engGain.gain.value=0;src.connect(engFilter);engFilter.connect(engGain);engGain.connect(AC.destination);src.start();whine=AC.createOscillator();whine.type='sawtooth';whine.frequency.value=90;const wg=AC.createGain();wg.gain.value=0.05;const wf=AC.createBiquadFilter();wf.type='lowpass';wf.frequency.value=500;whine.connect(wf);wf.connect(wg);wg.connect(engGain);whine.start();}catch(e){AC=null;}}
 function ping(f,len){if(!AC||!soundOn)return;const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f||880;o.type='sine';const t=AC.currentTime;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.22,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+(len||0.5));o.connect(g);g.connect(AC.destination);o.start();o.stop(t+(len||0.5)+0.05);}
+// the boom: two sub-bass hits a beat apart plus a low thump of filtered noise, through a compressor so it stays round, not piercing
+function boomSound(){if(!AC||!soundOn)return;const t=AC.currentTime;const comp=AC.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=8;comp.connect(AC.destination);
+  const hit=(t0,f0,f1,amp,len)=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f0,t0);o.frequency.exponentialRampToValueAtTime(f1,t0+len);g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(amp,t0+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+len);o.connect(g);g.connect(comp);o.start(t0);o.stop(t0+len+0.05);};
+  hit(t,95,28,0.9,0.9);hit(t+0.14,70,24,0.8,1.1);
+  const n=AC.createBufferSource(),buf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.5);n.buffer=buf;
+  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.setValueAtTime(220,t);lp.frequency.exponentialRampToValueAtTime(60,t+0.8);const ng=AC.createGain();ng.gain.setValueAtTime(0.6,t);ng.gain.exponentialRampToValueAtTime(0.0001,t+0.9);n.connect(lp);lp.connect(ng);ng.connect(comp);n.start(t);}
 function toggleSound(){soundOn=!soundOn;$('bSound').setAttribute('aria-pressed',String(soundOn));}
 $('bSound').addEventListener('click',toggleSound);
 function fullscreen(){const el=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
@@ -416,9 +445,10 @@ const music=$('music');music.volume=0.45;
 function setMusic(on,say){musicOn=on;$('bMusic').setAttribute('aria-pressed',String(on));savePref('music',on);if(on&&playing)music.play().catch(()=>{});else music.pause();if(say)toast(on?'Music on: Austin Afterburner':'Music off');}
 $('bMusic').addEventListener('click',()=>setMusic(!musicOn,false));
 setMusic(pref('music',true),false);
-function setNight(on,say){nightOn=on;viewer.clock.currentTime=on?NIGHT_T:DUSK_T;$('bNight').setAttribute('aria-pressed',String(on));savePref('night',on);if(say)toast(on?'Night: the violet crown':'Dusk');}
+function setNight(on,say){nightOn=on;viewer.clock.currentTime=on?NIGHT_T:DUSK_T;$('bNight').setAttribute('aria-pressed',String(on));$('optNight').checked=on;savePref('night',on);if(say)toast(on?'Night: the violet crown':'Dusk');}
 $('bNight').addEventListener('click',()=>setNight(!nightOn,false));
-setNight(pref('night',true),false);
+$('optNight').addEventListener('change',e=>setNight(e.target.checked,false));
+setNight(pref('night',false),false);
 $('mTour').addEventListener('click',()=>setMode('tour'));$('mFree').addEventListener('click',()=>setMode('free'));
 function go(){initAudio();if(AC&&AC.state==='suspended')AC.resume();if(musicOn)music.play().catch(()=>{});$('start').classList.add('hidden');$('hud').classList.add('on');playing=true;paused=false;finished=false;gate=0;elapsed=0;spawn();smokeOn=false;
   $('gate').classList.toggle('free',mode!=='tour');$('clock').style.display=mode==='tour'?'':'none';GATES.forEach(g=>g.ent.show=false);LANDMARKS.forEach(l=>l.lab.show=true);
@@ -456,7 +486,7 @@ function step(dt){
   let rollIn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);
   let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);if(invert)pitchIn=-pitchIn;
   const yawIn=(K.KeyA?1:0)-(K.KeyD?1:0);
-  throttle=G.stepThrottle(throttle,K.KeyW,K.KeyS,dt);burner=!!(K.ShiftLeft||K.ShiftRight);
+  throttle=G.stepThrottle(throttle,K.KeyW,K.KeyS,dt);burner=!!(K.ShiftLeft||K.ShiftRight);burnerHeld=burner?burnerHeld+dt:0;
   body(AX,fwd);body(AY,left);body(AZ,up);
   // pilot assist: scripted airshow maneuvers take the stick when something is in the way
   const rightZ=-left.z;                                  // right wing up means banked left
@@ -469,7 +499,8 @@ function step(dt){
       if(mi.done)endMnv();else{agility=1;rollIn=mi.rollIn;pitchIn=mi.pitchIn;free=mi.free;rollRate=mi.rollRate;pitchRate=mi.pitchRate;}}
     if(!mnv){rollRate=2.6;pitchRate=1.3;if(agl<18&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
   }
-  speed=G.stepSpeed(speed,throttle,fwd.z,dt,burner);
+  const prevSpeed=speed;speed=G.stepSpeed(speed,throttle,fwd.z,dt,burner,burnerHeld);
+  if(G.boomCrossing(prevSpeed,speed))sonicBoom();
   rotBody(AX,rollIn*rollRate*agility*dt);
   rotBody(AY,-pitchIn*pitchRate*agility*dt);
   rotBody(AZ,yawIn*0.6*dt);
@@ -499,6 +530,7 @@ function step(dt){
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
 function crash(){crashed=1.3;$('flash').style.opacity=0.9;ping(120,0.8);toast('Splash. Back over Zilker.');smokeOn=false;}
+function sonicBoom(){boomSound();boomT=0.7;shake=0.5;$('flash').style.opacity=0.5;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},90);toast('Mach 1. Baboom.');}
 
 // ---------- camera ----------
 const camDest=new C.Cartesian3(),camDir=new C.Cartesian3(),camUp=new C.Cartesian3(),lookL=new C.Cartesian3(),desired=new C.Cartesian3();
@@ -508,6 +540,7 @@ function updateCamera(dt){
   if(cam==='cockpit'){desired.x=pos.x+fwd.x*2.5+up.x*1.3;desired.y=pos.y+fwd.y*2.5+up.y*1.3;desired.z=pos.z+fwd.z*2.5+up.z*1.3;C.Cartesian3.clone(desired,camPos);toWorld(camPos,camDest);toWorldVec(fwd,camDir);toWorldVec(up,camUp);}
   else{desired.x=pos.x-fwd.x*30+up.x*6.5;desired.y=pos.y-fwd.y*30+up.y*6.5;desired.z=pos.z-fwd.z*30+up.z*6.5;if(crashed>0)C.Cartesian3.clone(camPos,desired);
     const k=1-Math.exp(-dt*5);camPos.x+=(desired.x-camPos.x)*k;camPos.y+=(desired.y-camPos.y)*k;camPos.z+=(desired.z-camPos.z)*k;
+    if(shake>0){shake-=dt;const s=shake*3;camPos.x+=(Math.random()-0.5)*s;camPos.y+=(Math.random()-0.5)*s;camPos.z+=(Math.random()-0.5)*s;}
     if(groundH!==undefined&&camPos.z<groundH+5)camPos.z=groundH+5;
     toWorld(camPos,camDest);lookL.x=pos.x+fwd.x*45;lookL.y=pos.y+fwd.y*45;lookL.z=pos.z+fwd.z*45+2;const d=V(lookL.x-camPos.x,lookL.y-camPos.y,lookL.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);
     const u=V(up.x*0.35,up.y*0.35,up.z*0.35+0.65);C.Cartesian3.normalize(u,u);toWorldVec(u,camUp);}
@@ -516,7 +549,7 @@ function updateCamera(dt){
 }
 
 // ---------- per-frame ----------
-let last=performance.now(),T=0,idleA=0;
+let last=performance.now(),T=0,idleA=0,diagFrames=0,diagT=0;
 const smokeTmp=new C.Cartesian3();
 scene.preUpdate.addEventListener(()=>{
   const now=performance.now();const dt=Math.min(0.05,(now-last)/1000);last=now;
@@ -525,15 +558,18 @@ scene.preUpdate.addEventListener(()=>{
   toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
   updateBats(T+40);
   for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;s.b.color=new C.Color(1,0.96,0.92,0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
-  if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(burner?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(burner?900:0);whine.frequency.value=80+throttle*150+(burner?90:0);}
+  const stage=G.burnerStage(burner,burnerHeld);
+  if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(stage===2?0.22:stage===1?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(stage?900:0)+(stage===2?600:0);whine.frequency.value=80+throttle*150+(stage?90:0)+(stage===2?60:0);}
   flame.show=playing&&!paused&&burner&&cam!=='cockpit';
+  if(boomT>0){boomT-=dt;coneMat.uniforms.color.alpha=Math.max(0,0.45*boomT/0.7);cone.show=boomT>0&&cam!=='cockpit';}else cone.show=false;
   if(playing){
     updateCamera(dt);window.__lsfClimb=fwd.z;   // test probe
-    $('spd').textContent=Math.round(speed*G.KT_PER_MS);$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*G.FT_PER_M);
+    $('spd').textContent=Math.round(speed*G.KT_PER_MS);$('spdU').textContent=speed>=G.MACH1*0.98?'kt · M '+G.mach(speed).toFixed(2):'kt';$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*G.FT_PER_M);
     const hdg=G.headingDeg(fwd.x,fwd.y);$('hdg').textContent=G.fmtHeading(hdg);
     $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn);$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
     if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
+    diagFrames++;diagT+=dt;if(diagT>=0.5&&!$('diag').hidden){const s=tileset?tileset.statistics:null;$('diag').textContent=(diagFrames/diagT).toFixed(0)+' fps   dt '+(dt*1000).toFixed(0)+' ms\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';diagFrames=0;diagT=0;}
   }else{ // idle: slow orbit over downtown
     idleA+=dt*0.04;const cx=-600+Math.cos(idleA)*1800,cy=1200+Math.sin(idleA)*1800;const c=V(cx,cy,ell(600));toWorld(c,camDest);const d=V(0-cx,900-cy,ell(200)-c.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});partEntities.forEach(e=>e.show=false);
   }

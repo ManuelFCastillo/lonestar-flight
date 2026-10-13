@@ -88,22 +88,38 @@ describe('engine', () => {
     assert.equal(G.stepSpeed(340, 1, -1, 1), 340);
     assert.equal(G.stepSpeed(45, 0, 1, 1), 45);
   });
-  test('afterburner adds 110 m/s to the target and lifts the ceiling to 450', () => {
-    assert.equal(G.targetSpeed(1, true), 440);
-    assert.equal(G.targetSpeed(0, true), 165);
-    assert.equal(G.stepSpeed(450, 1, -1, 1, true), 450);
-    assert.equal(G.stepSpeed(450, 1, 0, 1, false), 340);   // let go of the burner: back under the normal ceiling at once
+  test('afterburner has two stages: a nudge, then the real thing after 2.5 s', () => {
+    assert.equal(G.burnerStage(false, 10), 0);
+    assert.equal(G.burnerStage(true, 0), 1);
+    assert.equal(G.burnerStage(true, 2.49), 1);
+    assert.equal(G.burnerStage(true, 2.5), 2);
+    assert.equal(G.targetSpeed(1, true, 0), 390);
+    assert.equal(G.targetSpeed(1, true, 3), 580);
+    assert.equal(G.speedCeiling(true, 0), 395);
+    assert.equal(G.speedCeiling(true, 3), 620);
+    assert.equal(G.stepSpeed(700, 1, -1, 1, true, 3), 620);   // clamped at the stage-two ceiling
+    assert.equal(G.stepSpeed(620, 1, 0, 1, false, 0), 340);   // let go of the burner: back under the normal ceiling at once
     let v = 300;
-    for (let i = 0; i < 900; i++) v = G.stepSpeed(v, 1, 0, 1 / 60, true);   // 15 s of flight
-    assert.ok(Math.abs(v - 440) < 0.5, 'burner settled at ' + v);
+    for (let i = 0; i < 900; i++) v = G.stepSpeed(v, 1, 0, 1 / 60, true, 3);   // 15 s in stage two
+    assert.ok(Math.abs(v - 580) < 0.5, 'stage two settled at ' + v);
+  });
+  test('the sound barrier sits above stage one and the boom fires once, on the way up', () => {
+    assert.ok(G.speedCeiling(true, 0) < G.MACH1, 'stage one must not be able to boom');
+    assert.ok(G.speedCeiling(true, 3) > G.MACH1);
+    assert.equal(G.boomCrossing(399, 400), true);
+    assert.equal(G.boomCrossing(400, 401), false);
+    assert.equal(G.boomCrossing(401, 399), false);
+    assert.ok(Math.abs(G.mach(340) - 1) < 1e-9);
+    assert.ok(Math.abs(G.mach(510) - 1.5) < 1e-9);
   });
 });
 
 describe('pilot assist', () => {
-  test('probe reaches 1.6 s ahead, clamped to 150..330 m', () => {
+  test('probe reaches 1.6 s ahead, clamped to 150..950 m', () => {
     assert.equal(G.probeDistance(50), 150);
     assert.equal(G.probeDistance(150), 240);
-    assert.equal(G.probeDistance(340), 330);
+    assert.equal(G.probeDistance(340), 544);
+    assert.equal(G.probeDistance(620), 950);
   });
   test('penalty is zero when clear by the margin, else the shortfall', () => {
     assert.equal(G.penalty(undefined, 100), 0);
