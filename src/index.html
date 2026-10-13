@@ -100,6 +100,10 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 #toast{position:fixed;bottom:120px;left:50%;transform:translate(-50%,10px);background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:10px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;opacity:0;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6;transition:opacity .4s}
+#splash{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.6);font-family:var(--display);font-weight:700;font-size:clamp(44px,7vw,96px);letter-spacing:.18em;color:var(--fg);text-shadow:0 2px 12px rgba(0,0,0,.7);opacity:0;pointer-events:none;white-space:nowrap}
+#splash.on{animation:splash 1.3s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes splash{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}30%{transform:translate(-50%,-50%) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+@media (prefers-reduced-motion:reduce){#splash.on{animation-duration:.6s}}
 #diag{position:fixed;top:calc(118px + env(safe-area-inset-top,0px));left:18px;margin:0;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-variant-numeric:tabular-nums}
 .modal{position:fixed;inset:0;z-index:9;display:none;place-items:center;background:rgba(18,26,43,.6);padding:16px}
 .modal.on{display:grid}
@@ -183,6 +187,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   </div>
   <div id="toast"></div>
   <pre id="diag" hidden></pre>
+  <div id="splash" aria-hidden="true">MACH 1</div>
 </div>
 <div id="flash"></div>
 
@@ -253,14 +258,15 @@ const SPAWN=anchor({lat:30.2669,lon:-97.7760,msl:150,agl:330});
 
 // ---------- viewer ----------
 C.Ion.defaultAccessToken=TOKEN;
-C.RequestScheduler.maximumRequestsPerServer=24;
+C.RequestScheduler.maximumRequestsPerServer=18;
+let tileFails=0;
 const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:4,scene3DOnly:true});
 const scene=viewer.scene;
 scene.screenSpaceCameraController.enableInputs=false;
 scene.skyAtmosphere.hueShift=-0.06;scene.skyAtmosphere.saturationShift=0.1;scene.skyAtmosphere.brightnessShift=-0.1;
 const DUSK_T=C.JulianDate.fromIso8601('2026-10-14T00:40:00Z'),NIGHT_T=C.JulianDate.fromIso8601('2026-10-14T04:30:00Z');   // 7:40 pm and 11:30 pm in Austin
 viewer.clock.currentTime=DUSK_T;
-scene.camera.frustum.fov=C.Math.toRadians(64);
+const BASE_FOV=C.Math.toRadians(64);scene.camera.frustum.fov=BASE_FOV;
 // Night (optional, L): the tiles are daytime photos, so night is a full-screen grade. Darken and cool the city, let bright
 // surfaces read as lit windows, and lay the violet crown along the horizon with a purple haze on distant buildings.
 let nightOn=false;
@@ -301,7 +307,8 @@ async function loadCity(){
   try{
     tileset=await C.createGooglePhotorealistic3DTileset({onlyUsingWithGoogleGeocoder:true});
     // streaming tuned for a camera that never stops: nearest tiles first, never drop requests mid-flight, keep what we just flew over
-    tileset.maximumScreenSpaceError=16;
+    tileset.maximumScreenSpaceError=14;             // adaptive from here: tighter when the frame rate allows, looser when it does not
+    tileset.tileFailed.addEventListener(()=>{tileFails++;});
     tileset.cullRequestsWhileMoving=false;        // default true: skips requests while the camera moves, which is always
     tileset.foveatedScreenSpaceError=false;       // default true: defers the edges of the view until the camera rests, which is never
     tileset.dynamicScreenSpaceError=false;        // moves each tile's detail target every frame as the camera moves: that is the LOD flicker
@@ -348,10 +355,39 @@ const partEntities=[jet];
 // afterburner plumes: two translucent cones behind the nozzles, shown only while Shift is held
 const flameInst=[];for(const s of [-1,1])flameInst.push(new C.GeometryInstance({geometry:cylG(4.5,0.08,0.62),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.25,0.75*s,-0.1),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}}));
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:false}));flame.show=false;
-// vapor cone for the sonic boom: a white cone around the fuselage that fades out
-const coneMat=C.Material.fromType('Color',{color:new C.Color(1,1,1,0)});
-const cone=scene.primitives.add(new C.Primitive({geometryInstances:new C.GeometryInstance({geometry:new C.CylinderGeometry({length:7,topRadius:0.2,bottomRadius:4.6,slices:28,vertexFormat:C.MaterialAppearance.MaterialSupport.BASIC.vertexFormat}),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-1,0,0),rotY(Math.PI/2),ONE)}),appearance:new C.MaterialAppearance({material:coneMat,translucent:true,closed:false,faceForward:true,materialSupport:C.MaterialAppearance.MaterialSupport.BASIC}),asynchronous:false,allowPicking:false}));cone.show=false;
-function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;cone.modelMatrix=jet.modelMatrix;}
+// sonic boom, the real look: a Prandtl-Glauert vapor disc that forms around the fuselage and wings, swells and tears away,
+// plus a faint refraction ripple across the frame. No glowing rings; real shocks are invisible.
+let boomAge=-1;const boomUV=new C.Cartesian2(0.5,0.5),winTmp=new C.Cartesian2();
+const vap=[];const vapM3=new C.Matrix3(),vapTmp=new C.Cartesian3(),vapOff=new C.Cartesian3();   // filled once the smoke texture exists, below
+function updateVapor(vis){
+  const t=boomAge/1.7;if(t>=1||t<0){vap.forEach(v=>v.b.show=false);return;}
+  C.Matrix3.fromQuaternion(worldQ,vapM3);
+  for(const v of vap){const tt=clamp(t*(1+v.j*0.35),0,1);const r=v.r0*(1+2.6*tt);vapOff.x=v.x0-tt*8;vapOff.y=v.y0+Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r*0.85;
+    C.Matrix3.multiplyByVector(vapM3,vapOff,vapTmp);C.Cartesian3.add(worldPos,vapTmp,vapTmp);v.b.position=vapTmp;const s=2.2+tt*7;v.b.width=s;v.b.height=s;v.b.color=new C.Color(1,1,1,Math.sin(Math.PI*Math.pow(tt,0.55))*0.75);v.b.show=vis;}
+}
+const RIPPLE_FS=`
+uniform sampler2D colorTexture;
+uniform vec2 u_center;
+uniform float u_t;
+uniform float u_on;
+in vec2 v_textureCoordinates;
+void main(){
+  vec2 uv=v_textureCoordinates;
+  if(u_on<0.5){out_FragColor=texture(colorTexture,uv);return;}
+  vec2 d=uv-u_center;d.x*=czm_viewport.z/czm_viewport.w;
+  float r=length(d);float R=u_t*1.4;float w=0.05+u_t*0.06;
+  float ring=exp(-pow((r-R)/w,2.0));
+  vec2 dir=d/max(r,1e-4);vec2 off=dir*ring*0.014*(1.0-u_t);
+  out_FragColor=vec4(texture(colorTexture,uv-off).rgb,1.0);
+}`;
+scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
+function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;}
+function updateBoomFx(realDt){
+  if(boomAge<0)return;
+  boomAge+=realDt;if(boomAge>1.8){boomAge=-1;updateVapor(false);return;}
+  updateVapor(cam!=='cockpit');
+  const w=C.SceneTransforms.worldToWindowCoordinates(scene,worldPos,winTmp);if(w){boomUV.x=w.x/scene.canvas.clientWidth;boomUV.y=1-w.y/scene.canvas.clientHeight;}
+}
 
 // smoke: billboards sized in meters
 const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=g.createRadialGradient(32,32,2,32,32,30);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.5,'rgba(255,255,255,.45)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c;})();
@@ -359,7 +395,9 @@ const smokeCol=scene.primitives.add(new C.BillboardCollection());
 const SMOKEN=320,smoke=[];
 for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({image:smokeImg,position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,color:new C.Color(1,0.95,0.9,0),show:false});smoke.push({b,age:9,life:1,p:V(0,0,0),v:V(0,0,0)});}
 let smokeIdx=0;
-function emitSmoke(local){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
+const vapCol=scene.primitives.add(new C.BillboardCollection());
+for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:vapCol.add({image:smokeImg,position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false}),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
+function emitSmoke(local,vel){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();}s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
 
 // bats: a stream leaving the bridge eastward along the river
 const batCol=scene.primitives.add(new C.PointPrimitiveCollection());
@@ -389,10 +427,10 @@ let anchorCursor=0;
 function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
 
 // ---------- state ----------
-const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,boomT=0,shake=0,musicOn=true;
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true;
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
 const camPos=V(0,0,0);
-function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomT=0;shake=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
+function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
 spawn();toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
 
 // ---------- input ----------
@@ -530,7 +568,9 @@ function step(dt){
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
 function crash(){crashed=1.3;$('flash').style.opacity=0.9;ping(120,0.8);toast('Splash. Back over Zilker.');smokeOn=false;}
-function sonicBoom(){boomSound();boomT=0.7;shake=0.5;$('flash').style.opacity=0.5;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},90);toast('Mach 1. Baboom.');}
+function sonicBoom(){boomSound();boomAge=0;shake=0.45;$('flash').style.opacity=0.25;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},60);
+  const sp=$('splash');sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');
+  window.__lsfBooms=(window.__lsfBooms||0)+1;}
 
 // ---------- camera ----------
 const camDest=new C.Cartesian3(),camDir=new C.Cartesian3(),camUp=new C.Cartesian3(),lookL=new C.Cartesian3(),desired=new C.Cartesian3();
@@ -545,6 +585,7 @@ function updateCamera(dt){
     toWorld(camPos,camDest);lookL.x=pos.x+fwd.x*45;lookL.y=pos.y+fwd.y*45;lookL.z=pos.z+fwd.z*45+2;const d=V(lookL.x-camPos.x,lookL.y-camPos.y,lookL.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);
     const u=V(up.x*0.35,up.y*0.35,up.z*0.35+0.65);C.Cartesian3.normalize(u,u);toWorldVec(u,camUp);}
   C.Cartesian3.normalize(camDir,camDir);C.Cartesian3.normalize(camUp,camUp);
+  scene.camera.frustum.fov=BASE_FOV+((boomAge>=0&&boomAge<0.8)?Math.sin(boomAge/0.8*Math.PI)*C.Math.toRadians(6):0);   // zoom punch
   scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});
 }
 
@@ -552,7 +593,8 @@ function updateCamera(dt){
 let last=performance.now(),T=0,idleA=0,diagFrames=0,diagT=0;
 const smokeTmp=new C.Cartesian3();
 scene.preUpdate.addEventListener(()=>{
-  const now=performance.now();const dt=Math.min(0.05,(now-last)/1000);last=now;
+  const now=performance.now();const realDt=Math.min(0.05,(now-last)/1000);last=now;
+  const dt=(boomAge>=0&&boomAge<0.6)?realDt*0.5:realDt;   // a beat of slow motion as the vapor forms
   resolveAnchors();
   if(playing&&!paused){step(dt);T+=dt;}
   toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
@@ -561,7 +603,7 @@ scene.preUpdate.addEventListener(()=>{
   const stage=G.burnerStage(burner,burnerHeld);
   if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(stage===2?0.22:stage===1?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(stage?900:0)+(stage===2?600:0);whine.frequency.value=80+throttle*150+(stage?90:0)+(stage===2?60:0);}
   flame.show=playing&&!paused&&burner&&cam!=='cockpit';
-  if(boomT>0){boomT-=dt;coneMat.uniforms.color.alpha=Math.max(0,0.45*boomT/0.7);cone.show=boomT>0&&cam!=='cockpit';}else cone.show=false;
+  updateBoomFx(realDt);
   if(playing){
     updateCamera(dt);window.__lsfClimb=fwd.z;   // test probe
     $('spd').textContent=Math.round(speed*G.KT_PER_MS);$('spdU').textContent=speed>=G.MACH1*0.98?'kt · M '+G.mach(speed).toFixed(2):'kt';$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*G.FT_PER_M);
@@ -569,7 +611,10 @@ scene.preUpdate.addEventListener(()=>{
     $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn);$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
     if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
-    diagFrames++;diagT+=dt;if(diagT>=0.5&&!$('diag').hidden){const s=tileset?tileset.statistics:null;$('diag').textContent=(diagFrames/diagT).toFixed(0)+' fps   dt '+(dt*1000).toFixed(0)+' ms\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';diagFrames=0;diagT=0;}
+    diagFrames++;diagT+=realDt;if(diagT>=1){const fps=diagFrames/diagT;
+      if(tileset){const target=fps>55?10:fps>40?13:fps>28?16:22;tileset.maximumScreenSpaceError+=(target-tileset.maximumScreenSpaceError)*0.35;}   // adaptive detail
+      if(!$('diag').hidden){const s=tileset?tileset.statistics:null,rs=C.RequestScheduler.statistics;$('diag').textContent=fps.toFixed(0)+' fps   detail target '+(tileset?tileset.maximumScreenSpaceError.toFixed(1):'-')+' px\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nrequests '+rs.numberOfAttemptedRequests+'  cancelled '+rs.numberOfCancelledRequests+'  failed '+rs.numberOfFailedRequests+'  tiles failed '+tileFails+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';}
+      diagFrames=0;diagT=0;}
   }else{ // idle: slow orbit over downtown
     idleA+=dt*0.04;const cx=-600+Math.cos(idleA)*1800,cy=1200+Math.sin(idleA)*1800;const c=V(cx,cy,ell(600));toWorld(c,camDest);const d=V(0-cx,900-cy,ell(200)-c.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});partEntities.forEach(e=>e.show=false);
   }

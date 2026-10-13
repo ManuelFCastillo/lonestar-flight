@@ -121,7 +121,7 @@ test('Shift lights the afterburner and pushes past the normal top speed', async 
   await expect(page.locator('#pBurn')).toHaveClass(/on/);
   await expect.poll(() => num(page, 'spd'), { timeout: 60_000 }).toBeGreaterThan(680); // only the burner gets past 661 kt
   // keep holding: stage two, then the sonic boom when the jet crosses the in-game Mach 1
-  await expect(page.locator('#toast')).toContainText('Mach 1', { timeout: 90_000 });
+  await expect.poll(() => page.evaluate(() => window.__lsfBooms || 0), { timeout: 90_000 }).toBeGreaterThan(0);
   await expect.poll(() => page.locator('#spdU').textContent()).toContain('M 1');
   await page.keyboard.up('Shift');
   await expect(page.locator('#pBurn')).not.toHaveClass(/on/);
