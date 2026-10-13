@@ -308,13 +308,17 @@ async function loadCity(){
     tileset=await C.createGooglePhotorealistic3DTileset({onlyUsingWithGoogleGeocoder:true});
     // streaming tuned for a camera that never stops: nearest tiles first, never drop requests mid-flight, keep what we just flew over
     tileset.maximumScreenSpaceError=14;             // adaptive from here: tighter when the frame rate allows, looser when it does not
-    tileset.tileFailed.addEventListener(()=>{tileFails++;});
+    // A tile that fails once is never re-requested by Cesium, and a parent cannot swap to its sharp children until every
+    // child has loaded, so one dropped request leaves a whole block of the city blurry. Retry instead of giving up.
+    tileset.resource.retryAttempts=4;
+    tileset.resource.retryCallback=(res,err)=>!(err&&err.statusCode===404);
+    tileset.tileFailed.addEventListener(e=>{tileFails++;if(tileFails<=10)console.warn('tile failed',e&&e.url,e&&e.message);});
     tileset.cullRequestsWhileMoving=false;        // default true: skips requests while the camera moves, which is always
     tileset.foveatedScreenSpaceError=false;       // default true: defers the edges of the view until the camera rests, which is never
     tileset.dynamicScreenSpaceError=false;        // moves each tile's detail target every frame as the camera moves: that is the LOD flicker
     tileset.skipLevelOfDetail=false;
     tileset.progressiveResolutionHeightFraction=0;   // default 0.3 loads a low-res pass first and then re-pops to full: one pop, not two
-    tileset.cacheBytes=2048*1024*1024;tileset.maximumCacheOverflowBytes=1024*1024*1024;   // a fast connection fills 1 GB in a minute and then churns
+    tileset.cacheBytes=1024*1024*1024;tileset.maximumCacheOverflowBytes=512*1024*1024;   // twice Cesium's default; more than this can stress Chrome's per-tab GPU memory
     tileset.preloadWhenHidden=false;
     scene.primitives.add(tileset);
     tileset.initialTilesLoaded.addEventListener(()=>{tilesReady=true;enableGo();});
