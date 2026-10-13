@@ -88,6 +88,15 @@ describe('engine', () => {
     assert.equal(G.stepSpeed(340, 1, -1, 1), 340);
     assert.equal(G.stepSpeed(45, 0, 1, 1), 45);
   });
+  test('afterburner adds 110 m/s to the target and lifts the ceiling to 450', () => {
+    assert.equal(G.targetSpeed(1, true), 440);
+    assert.equal(G.targetSpeed(0, true), 165);
+    assert.equal(G.stepSpeed(450, 1, -1, 1, true), 450);
+    assert.equal(G.stepSpeed(450, 1, 0, 1, false), 340);   // let go of the burner: back under the normal ceiling at once
+    let v = 300;
+    for (let i = 0; i < 900; i++) v = G.stepSpeed(v, 1, 0, 1 / 60, true);   // 15 s of flight
+    assert.ok(Math.abs(v - 440) < 0.5, 'burner settled at ' + v);
+  });
 });
 
 describe('pilot assist', () => {

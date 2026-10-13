@@ -34,4 +34,10 @@ GitHub Actions runs both on every push and pull request (`.github/workflows/test
 
 ## Controls
 
-Arrows pitch and roll · A/D rudder · W/S throttle · Space smoke · C camera · R reset · P pause · I invert pitch · M sound · F fullscreen
+Arrows pitch and roll · A/D rudder · W/S throttle · Shift afterburner · Space smoke · C camera · X pilot assist · R reset · P pause · I invert pitch · N music · L night / dusk · M sound · F fullscreen
+
+## Night, music, afterburner
+
+- **Night** is the default. Google's tiles are daytime photos, so night is a full-screen post-process: the city is darkened and cooled, bright surfaces read as lit windows, and the violet crown sits on the horizon with a purple haze on distant buildings. The moon button or L switches to dusk.
+- **Music**: `src/austin-afterburner.m4a` ("Austin Afterburner", AAC) loops from takeoff. The note button or N toggles it; the choice is remembered.
+- **Afterburner**: hold Shift for 110 m/s more thrust and a 450 m/s ceiling, with plumes behind the nozzles.

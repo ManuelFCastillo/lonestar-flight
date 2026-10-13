@@ -24,13 +24,14 @@
   function boundary(x, y) { const r = Math.hypot(x, y); return r > 15000 ? 'respawn' : r > 13000 ? 'warn' : 'ok'; }
 
   // ---- engine ----
-  function targetSpeed(throttle) { return 55 + 275 * throttle; }
+  const VMAX = 340, VMAX_BURNER = 450, BURNER_BOOST = 110;   // m/s
+  function targetSpeed(throttle, burner) { return 55 + 275 * throttle + (burner ? BURNER_BOOST : 0); }
   function stepThrottle(t, up, down, dt) { if (up) t = clamp(t + dt * 0.6, 0, 1); if (down) t = clamp(t - dt * 0.6, 0, 1); return t; }
-  // climbRate: vertical component of the forward vector (-1..1). Diving gains speed, climbing bleeds it.
-  function stepSpeed(speed, throttle, climbRate, dt) {
-    speed += (targetSpeed(throttle) - speed) * Math.min(1, dt * 0.55);
+  // climbRate: vertical component of the forward vector (-1..1). Diving gains speed, climbing bleeds it. Afterburner lifts the ceiling.
+  function stepSpeed(speed, throttle, climbRate, dt, burner) {
+    speed += (targetSpeed(throttle, burner) - speed) * Math.min(1, dt * 0.55);
     speed -= climbRate * 9.8 * dt * 0.9;
-    return clamp(speed, 45, 340);
+    return clamp(speed, 45, burner ? VMAX_BURNER : VMAX);
   }
 
   // ---- pilot assist ----
@@ -76,5 +77,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    targetSpeed, stepThrottle, stepSpeed, MARGIN, probeDistance, penalty, chooseManeuver, maneuverInputs, trackFloor, parsePref };
+    VMAX, VMAX_BURNER, BURNER_BOOST, targetSpeed, stepThrottle, stepSpeed, MARGIN, probeDistance, penalty, chooseManeuver, maneuverInputs, trackFloor, parsePref };
 });

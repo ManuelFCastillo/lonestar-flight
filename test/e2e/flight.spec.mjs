@@ -108,6 +108,43 @@ test('inverted pitch flips the arrow keys', async ({ page }) => {
   expect(invertedClimb).toBeLessThan(-0.05);
 });
 
+test('Shift lights the afterburner and pushes past the normal top speed', async ({ page }) => {
+  // Headless Chromium renders Cesium slowly and the game clock follows the frame rate, so poll for states instead of sleeping.
+  test.setTimeout(180_000);
+  await takeOff(page);
+  const width = () => page.locator('#thr').evaluate((el) => parseFloat(el.style.width));
+  await page.keyboard.down('KeyW');
+  await expect.poll(width, { timeout: 20_000 }).toBeGreaterThan(99);                 // full throttle
+  await page.keyboard.up('KeyW');
+  await expect.poll(() => num(page, 'spd'), { timeout: 30_000 }).toBeGreaterThan(600); // settling toward the 661 kt ceiling
+  await page.keyboard.down('Shift');
+  await expect(page.locator('#pBurn')).toHaveClass(/on/);
+  await expect.poll(() => num(page, 'spd'), { timeout: 40_000 }).toBeGreaterThan(700); // only the burner gets past 661 kt
+  await page.keyboard.up('Shift');
+  await expect(page.locator('#pBurn')).not.toHaveClass(/on/);
+});
+
+test('music is on by default, starts with the flight, and the button silences it', async ({ page }) => {
+  await expect(page.locator('#bMusic')).toHaveAttribute('aria-pressed', 'true');
+  await takeOff(page);
+  await expect.poll(() => page.evaluate(() => !document.getElementById('music').paused)).toBe(true);
+  await page.locator('#bMusic').click();
+  await expect(page.locator('#bMusic')).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => document.getElementById('music').paused)).toBe(true);
+  await page.reload();
+  await expect(page.locator('#bMusic')).toHaveAttribute('aria-pressed', 'false');   // remembered
+});
+
+test('night is the default, L flips to dusk, and the choice is remembered', async ({ page }) => {
+  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'true');
+  await takeOff(page);
+  await page.keyboard.press('KeyL');
+  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#toast')).toHaveText('Dusk');
+  await page.reload();
+  await expect(page.locator('#bNight')).toHaveAttribute('aria-pressed', 'false');
+});
+
 test('free flight hides the gate panel and the clock', async ({ page }) => {
   await page.locator('#mFree').click();
   await takeOff(page);
