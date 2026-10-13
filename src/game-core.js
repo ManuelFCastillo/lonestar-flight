@@ -54,6 +54,10 @@
     if (p.center < 22 && agl > 35) return { type: 'barrel', dir: side, say: 'Barrel roll!' };
     return { type: 'jink', dir: side, say: side > 0 ? 'Break left!' : 'Break right!' };
   }
+  // Precision guard: near a gate, or while the pilot is actively working the pitch, only a real wall (deep penalty) may
+  // take the stick, and never with a barrel roll. The hard floor still catches the ground.
+  const PRECISE_WALL = 30;
+  function allowManeuver(m, p, precise) { if (!m) return null; if (!precise) return m; if (p.center < PRECISE_WALL || m.type === 'barrel') return null; return m; }
   // Stick inputs for a scripted move at time t. dir: +1 left. bankL: bank angle, + = left wing down.
   // levelDir: the roll input that levels the wings now. RL: the roll input that banks left in this engine.
   function maneuverInputs(type, t, dir, bankL, levelDir, RL) {
@@ -84,5 +88,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, STAGE_T, MACH1, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach, MARGIN, probeDistance, penalty, chooseManeuver, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach, MARGIN, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
 });

@@ -314,6 +314,7 @@ async function loadCity(){
     tileset.resource.retryCallback=(res,err)=>!(err&&err.statusCode===404);
     tileset.tileFailed.addEventListener(e=>{tileFails++;if(tileFails<=10)console.warn('tile failed',e&&e.url,e&&e.message);});
     tileset.cullRequestsWhileMoving=false;        // default true: skips requests while the camera moves, which is always
+    tileset.cancelOutOfViewRequests=false;        // default true: cancels a download the moment a tile leaves the frame, so edge tiles never finish
     tileset.foveatedScreenSpaceError=false;       // default true: defers the edges of the view until the camera rests, which is never
     tileset.dynamicScreenSpaceError=false;        // moves each tile's detail target every frame as the camera moves: that is the LOD flicker
     tileset.skipLevelOfDetail=false;
@@ -535,7 +536,8 @@ function step(dt){
   assistAct=0;let rollRate=2.3,pitchRate=1.25,free=false,agility=clamp(speed/180,0.55,1.15);
   if(assist){
     const p=assistProbe();mnvCool-=dt;const agl=groundH===undefined?999:pos.z-groundH;
-    if(!mnv&&mnvCool<=0){const m=G.chooseManeuver(p,agl);if(m)startMnv(m.type,m.dir,m.say);}
+    if(!mnv&&mnvCool<=0){const gateNear=mode==='tour'&&!finished&&C.Cartesian3.distance(pos,GATES[gate].local)<700;const handsOn=!!(K.ArrowUp||K.ArrowDown);
+      const m=G.allowManeuver(G.chooseManeuver(p,agl),p,gateNear||handsOn);if(m)startMnv(m.type,m.dir,m.say);}
     assistAct=mnv?1:0;
     if(mnv){mnv.t+=dt;const bankL=Math.asin(clamp(rightZ,-1,1));const mi=G.maneuverInputs(mnv.type,mnv.t,mnv.dir,bankL,Math.sign(rightZ),-1);   // -1: the roll input that banks left here
       if(mi.done)endMnv();else{agility=1;rollIn=mi.rollIn;pitchIn=mi.pitchIn;free=mi.free;rollRate=mi.rollRate;pitchRate=mi.pitchRate;}}
