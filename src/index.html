@@ -502,7 +502,10 @@ const partEntities=[jet];
 const JET_FIX=C.Matrix4.fromTranslationQuaternionRotationScale(V(-2.35,0,-0.3),C.Quaternion.IDENTITY,V(0.1,0.1,0.1));let jetModel=null;
 C.Model.fromGltfAsync({url:'jet/scene.gltf',modelMatrix:jet.modelMatrix,upAxis:C.Axis.Y,forwardAxis:C.Axis.X,allowPicking:true,incrementallyLoadTextures:false}).then(m=>{scene.primitives.add(m);m.readyEvent.addEventListener(()=>{for(const n of ['F-16-landingOn_6','F-16-landingOnLight_7']){const nd=m.getNode(n);if(nd)nd.show=false;}m.lightColor=new C.Cartesian3(2.2,2.1,2.0);jetModel=m;EXCL.push(m);});}).catch(e=>console.warn('jet model unavailable',e));
 // afterburner plumes: two translucent cones behind the nozzles, shown only while Shift is held
-const flameInst=[new C.GeometryInstance({geometry:cylG(5.5,0.1,0.9),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.95,0,-0.05),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}})];   // one engine, one plume
+// One engine, one plume. The cone's offset is applied per frame (FLAME_FIX), not on the instance: in a scene3DOnly scene Cesium does not
+// bake a lone instance's matrix into the vertices, it folds it into the primitive's modelMatrix once, which placeJet then overwrites.
+const FLAME_FIX=C.Matrix4.fromTranslationQuaternionRotationScale(V(-9.5,0,-0.05),rotY(-Math.PI/2),ONE);   // wide end just inside the nozzle
+const flameInst=[new C.GeometryInstance({geometry:cylG(5,0.08,0.62),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}})];
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:true}));flame.show=false;   // pickable so the ground probe can exclude it
 // sonic boom, the real look: a Prandtl-Glauert vapor disc that forms around the fuselage and wings, swells and tears away,
 // plus a faint refraction ripple across the frame. No glowing rings; real shocks are invisible.
@@ -533,7 +536,7 @@ void main(){
   out_FragColor=vec4(texture(colorTexture,uv-off).rgb,1.0);
 }`;
 if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
-function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;if(jetModel)jetModel.modelMatrix=C.Matrix4.multiply(jet.modelMatrix,JET_FIX,new C.Matrix4());}
+function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=C.Matrix4.multiply(jet.modelMatrix,FLAME_FIX,new C.Matrix4());if(jetModel)jetModel.modelMatrix=C.Matrix4.multiply(jet.modelMatrix,JET_FIX,new C.Matrix4());}
 function updateBoomFx(realDt){
   if(boomAge<0)return;
   boomAge+=realDt;if(boomAge>1.8){boomAge=-1;updateVapor(false);return;}
