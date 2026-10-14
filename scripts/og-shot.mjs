@@ -11,10 +11,14 @@ await page.locator('#goText').filter({ hasText: 'Take off' }).waitFor({ timeout:
 await page.waitForTimeout(8000);                 // let the first tiles land before the camera moves
 await page.keyboard.press('Enter');
 await page.locator('#hud.on').waitFor();
+await page.keyboard.press('KeyX');               // assist off for the run, so the jet flies straight at the skyline instead of breaking around a tower
+await page.waitForFunction(() => !!window.__lsf.jetModel, null, { timeout: 60_000 });   // the glTF airframe is in
 await page.keyboard.down('Shift');               // plumes on, speed up toward downtown
 await page.waitForTimeout(25_000);               // headless runs the sim slowly; this is a few seconds of flight
 await page.keyboard.up('Shift');
 await page.waitForTimeout(6000);                 // let tiles refine for the frame
+await page.keyboard.press('KeyX');               // assist back on for the HUD
+await page.addStyleTag({ content: '#toast{display:none!important}' });   // no 'Pilot assist on' toast in the frame
 await page.screenshot({ path: 'src/og.jpg', type: 'jpeg', quality: 86 });
 await browser.close();
 console.log('wrote src/og.jpg');
