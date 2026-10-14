@@ -1,5 +1,10 @@
 {
   "buildCommand": "node build.mjs",
   "outputDirectory": "dist",
-  "framework": null
+  "framework": null,
+  "headers": [
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
+    { "source": "/(.*)\\.(js|webmanifest)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
 }
