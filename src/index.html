@@ -404,7 +404,7 @@ function updateVapor(vis){
   C.Matrix3.fromQuaternion(worldQ,vapM3);
   for(const v of vap){const tt=clamp(t*(1+v.j*0.35),0,1);let s;
     if(boomKind===1){const r=v.r0*(1+2.6*tt);vapOff.x=v.x0-tt*8;vapOff.y=v.y0+Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r*0.85;s=2.2+tt*7;}
-    else{const along=7-v.j*22-tt*10;const r=0.4+(7-along)*0.32*(0.6+tt);vapOff.x=along;vapOff.y=Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r;s=1.6+(7-along)*0.22+tt*3;}
+    else{const along=7-v.j*16-tt*4;const r=0.3+(7-along)*0.22*(0.7+tt);vapOff.x=along;vapOff.y=Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r;s=1.4+(7-along)*0.16+tt*2;}   // ends ahead of the chase camera
     C.Matrix3.multiplyByVector(vapM3,vapOff,vapTmp);C.Cartesian3.add(worldPos,vapTmp,vapTmp);v.b.position=vapTmp;v.b.width=s;v.b.height=s;v.b.color=new C.Color(1,1,1,Math.sin(Math.PI*Math.pow(tt,0.55))*(boomKind===1?0.75:0.6));v.b.show=vis;}
 }
 const RIPPLE_FS=`
@@ -428,6 +428,7 @@ function updateBoomFx(realDt){
   if(boomAge<0)return;
   boomAge+=realDt;if(boomAge>1.8){boomAge=-1;updateVapor(false);return;}
   updateVapor(cam!=='cockpit');
+  if(boomKind===2&&boomAge<1.0&&playing&&!paused){for(const s of [-1,1])emitSmoke(V(pos.x+left.x*6.6*s-fwd.x,pos.y+left.y*6.6*s-fwd.y,pos.z+left.z*6.6*s-fwd.z),V(left.x*s*2,left.y*s*2,left.z*s*2));}   // wingtip vapor left behind
   const w=C.SceneTransforms.worldToWindowCoordinates(scene,worldPos,winTmp);if(w){boomUV.x=w.x/scene.canvas.clientWidth;boomUV.y=1-w.y/scene.canvas.clientHeight;}
 }
 
