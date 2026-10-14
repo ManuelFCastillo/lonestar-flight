@@ -166,7 +166,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 #pullup{position:fixed;top:28%;left:50%;transform:translateX(-50%);font-family:var(--display);font-weight:900;font-size:34px;letter-spacing:.16em;text-transform:uppercase;color:#ff3b30;border:2px solid #ff3b30;border-radius:4px;padding:6px 16px;animation:pullup .32s steps(1) infinite}
 @keyframes pullup{0%{opacity:1}50%{opacity:.15}}
 @media (prefers-reduced-motion:reduce){#pullup{animation:none}}
-#toast{position:fixed;bottom:120px;left:50%;transform:translate(-50%,10px);background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:10px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;opacity:0;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
+#toast{position:fixed;z-index:11;pointer-events:none;bottom:120px;left:50%;transform:translate(-50%,10px);background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:10px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;opacity:0;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6;transition:opacity .4s}
 #splash{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.6);font-family:var(--display);font-weight:700;font-size:clamp(44px,7vw,96px);letter-spacing:.18em;color:var(--fg);text-shadow:0 2px 12px rgba(0,0,0,.7);opacity:0;pointer-events:none;white-space:nowrap}
@@ -258,10 +258,10 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
     <span class="pill on" id="pAssist">Assist</span>
     <span class="pill" id="pInv">Inverted</span>
   </div>
-  <div id="toast"></div>
   <pre id="diag" hidden></pre>
   <div id="splash" aria-hidden="true">MACH 1</div>
 </div>
+<div id="toast"></div>
 <div id="flash"></div>
 <div id="touch" aria-label="Touch controls">
   <div class="tc left"><input type="range" id="tThr" min="0" max="100" value="60" aria-label="Throttle"><span>THR</span></div>
@@ -343,9 +343,11 @@ const SPAWN=anchor({lat:30.2669,lon:-97.7760,msl:150,agl:330});
 
 // ---------- viewer ----------
 C.Ion.defaultAccessToken=TOKEN;
-C.RequestScheduler.maximumRequestsPerServer=18;
+C.RequestScheduler.maximumRequestsPerServer=MOBILE?8:18;   // fewer in-flight downloads means fewer decode buffers: Safari kills tabs over memory
 let tileFails=0;
 const TOUCH=matchMedia('(pointer:coarse)').matches,MOBILE=TOUCH||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+const IPADOS=/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1;   // iPadOS Safari calls itself a Mac
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||IPADOS;
 const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:MOBILE?1:4,scene3DOnly:true});
 const scene=viewer.scene;
 scene.screenSpaceCameraController.enableInputs=false;
@@ -446,8 +448,8 @@ async function loadCity(){
     // Measured: at a 1 GB cap Cesium evicted 380 tiles in 16 s of low flight and ran 23 fps; at 3 GB it evicted none and ran 33 fps.
     // Eviction at the cap is what makes tiles just outside the frame swap between sharp and blurry as you turn.
     const bigMachine=!MOBILE&&(navigator.deviceMemory||8)>=8;
-    tileset.cacheBytes=(bigMachine?2560:MOBILE?512:1024)*1024*1024;tileset.maximumCacheOverflowBytes=(bigMachine?1024:MOBILE?256:512)*1024*1024;
-    if(MOBILE)tileset.maximumScreenSpaceError=20;
+    tileset.cacheBytes=(bigMachine?2560:MOBILE?256:1024)*1024*1024;tileset.maximumCacheOverflowBytes=(bigMachine?1024:MOBILE?64:512)*1024*1024;   // Safari on an iPad restarts the tab past roughly a gigabyte in total
+    if(MOBILE)tileset.maximumScreenSpaceError=22;
     tileset.preloadWhenHidden=false;
     scene.primitives.add(tileset);
     tileset.initialTilesLoaded.addEventListener(()=>{tilesReady=true;enableGo();});
@@ -650,10 +652,10 @@ function toggleSound(){soundOn=!soundOn;$('bSound').setAttribute('aria-pressed',
 $('bSound').addEventListener('click',toggleSound);
 // Full screen: the standard call, Safari's prefixed one on iPad, and on iPhone (which has neither) the home-screen route.
 function fullscreen(){const el=document.documentElement,standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches;
-  const hint=()=>{if(standalone)return;toast(/iPhone|iPad/.test(navigator.userAgent)?'Full screen on iOS: Share, then Add to Home Screen, and open it from there':'Full screen is not available in this browser');};
+  const hint=err=>{if(standalone){toast('Already full screen');return;}toast((IOS?'Full screen here: Share, then Add to Home Screen, and open it from there':'Full screen is not available in this browser')+(err&&err.message?' ('+err.message+')':''));};
   try{if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return;}
     const req=el.requestFullscreen||el.webkitRequestFullscreen;if(!req){hint();return;}
-    const p=req.call(el);if(p&&p.catch)p.catch(hint);}catch(e){hint();}}
+    const p=req.call(el);if(p&&p.catch)p.catch(hint);else setTimeout(()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement))hint();},600);}catch(e){hint(e);}}
 $('bFull').addEventListener('click',fullscreen);
 $('bHelp').addEventListener('click',()=>{if(playing)setPaused(true);});
 
@@ -817,7 +819,7 @@ scene.preUpdate.addEventListener(()=>{
     diagFrames++;diagT+=realDt;if(diagT>=1){const fps=diagFrames/diagT;
       // Detail is chosen once from the first six seconds of flight and then frozen: a detail target that keeps moving
       // re-decides every tile near the threshold each time it moves, which reads as LOD flicker across the whole city.
-      if(tileset&&!sseLocked){sseFps+=fps;sseSamples++;if(sseSamples>=6){const avg=sseFps/sseSamples;tileset.maximumScreenSpaceError=avg>50?12:avg>32?16:22;sseLocked=true;}}
+      if(tileset&&!sseLocked){sseFps+=fps;sseSamples++;if(sseSamples>=6){const avg=sseFps/sseSamples;tileset.maximumScreenSpaceError=MOBILE?(avg>45?20:avg>28?24:30):(avg>50?12:avg>32?16:22);sseLocked=true;}}
       if(!$('diag').hidden){const s=tileset?tileset.statistics:null,rs=C.RequestScheduler.statistics;$('diag').textContent=fps.toFixed(0)+' fps   detail '+(tileset?tileset.maximumScreenSpaceError.toFixed(0):'-')+' px'+(sseLocked?' (locked)':' (measuring)')+'\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nrequests '+rs.numberOfAttemptedRequests+'  cancelled '+rs.numberOfCancelledRequests+'  failed '+rs.numberOfFailedRequests+'  tiles failed '+tileFails+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';}
       diagFrames=0;diagT=0;}
   }else{ // idle: slow orbit over downtown
