@@ -588,7 +588,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 const cartoTmp=new C.Cartographic();
 const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame]);   // never let the probe land on the jet's own effects
 window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
-function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
+function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{const h=scene.sampleHeight(cartoTmp,EXCL);return (h===undefined||h<-40||h>620)?undefined:h;}catch(e){return undefined;}}   // Austin ground is 120-300 m; anything else is a coarse root tile's face, which can sit kilometres off, so it is ignored
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
 let anchorCursor=0;

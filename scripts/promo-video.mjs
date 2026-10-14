@@ -22,9 +22,11 @@ await page.addInitScript(() => { try { localStorage.setItem('music', '0'); local
 await page.goto(url, { waitUntil: 'load' });
 await page.locator('#goText').filter({ hasText: 'Take off' }).waitFor({ timeout: 90_000 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const gateIs = (n) => page.waitForFunction((n) => window.__lsf.gate >= n, n, { timeout: 120_000 });
+const gateIs = async (n) => { try { await page.waitForFunction((n) => window.__lsf.gate >= n, n, { timeout: 120_000 }); } catch (e) { await page.screenshot({ path: 'promo/raw/fail.png' }); throw new Error(`gate ${n} not reached in 120 s (see promo/raw/fail.png): ` + await page.evaluate(() => document.getElementById('gate').textContent.replace(/\s+/g, ' ') + ' spd ' + document.getElementById('spd').textContent + ' alt ' + document.getElementById('alt').textContent)); } console.error(`gate ${n} at ${((Date.now() - t0) / 1000).toFixed(1)} s`); };
 const gateDist = () => page.evaluate(() => { const t = document.getElementById('gDist').textContent; const v = parseFloat(t); return /km/.test(t) ? v * 1000 : v; });
-await sleep(4000);                                                   // the skyline refines behind the start screen
+// the skyline refines behind the start screen; take off only once the city has really streamed in, or the ground probe reads coarse root tiles
+await page.waitForFunction(() => { const t = window.__lsf.tileset; return t && t.statistics.numberOfTilesWithContentReady > 250 && t.statistics.numberOfPendingRequests < 4; }, null, { timeout: 120_000 }).catch(() => console.error('tiles still streaming after 120 s, taking off anyway'));
+await sleep(2500);
 const tEnter = clock();
 await page.keyboard.press('Enter');
 await page.locator('#hud.on').waitFor();
