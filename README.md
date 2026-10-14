@@ -51,3 +51,7 @@ Turn the phone sideways, tap Take off and allow motion access. Tilt to bank and 
 - **Night** is the default. Google's tiles are daytime photos, so night is a full-screen post-process: the city is darkened and cooled, bright surfaces read as lit windows, and the violet crown sits on the horizon with a purple haze on distant buildings. The moon button or L switches to dusk.
 - **Music**: `src/austin-afterburner.m4a` ("Austin Afterburner", AAC) loops from takeoff. The note button or N toggles it; the choice is remembered.
 - **Afterburner**: hold Shift for 110 m/s more thrust and a 450 m/s ceiling, with plumes behind the nozzles.
+
+## Credits
+
+The airframe is "F-16 Fighting Falcon - Fighter Jet - Free" (https://skfb.ly/oOR6O) by bohmerang, licensed under CC Attribution-NonCommercial-ShareAlike 4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). The copy in `src/jet/` has its textures reduced from 4096 to 2048 pixels and saved as JPEG, so the model is 4 MB instead of 23 MB; `src/jet/license.txt` is the original notice. City data is Google Photorealistic 3D Tiles served through Cesium ion.

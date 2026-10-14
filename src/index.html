@@ -236,6 +236,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
     <div id="tokenbox">No Cesium ion token is configured for this build. Paste one from <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com</a> to stream the city; it stays in this browser only.
       <input id="tokenIn" type="text" placeholder="eyJhbGciOi…" autocomplete="off" spellcheck="false" aria-label="Cesium ion access token"><button id="tokenGo">Use token</button></div>
     <p class="note" id="status">Google Photorealistic 3D Tiles via Cesium ion. Buildings keep loading as you fly.</p>
+    <p class="note" id="credit" style="font-size:10px">Jet: <a href="https://skfb.ly/oOR6O" target="_blank" rel="noopener">&ldquo;F-16 Fighting Falcon - Fighter Jet - Free&rdquo;</a> by <a href="https://sketchfab.com/bohmerang" target="_blank" rel="noopener">bohmerang</a>, <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></p>
     <p class="note" id="touchnote">On a phone: turn it sideways, tap Take off and allow motion. Tilt to bank and pull, slider for throttle, buttons for the rest. Recenter if the level feels off.</p>
   </div>
 </section>
@@ -495,6 +496,11 @@ part(V(-1.0,0,-0.75),null,boxG(V(7,1.4,0.5)),G2);                           // b
 for(const s of [-1,1])part(V(-1.6,5.1*s,-0.1),null,boxG(V(2.2,0.25,0.25)),DK);   // wingtip rails
 const jet=scene.primitives.add(new C.Primitive({geometryInstances:inst,appearance:new C.PerInstanceColorAppearance({translucent:false,closed:true}),asynchronous:false,allowPicking:true}));   // picking on, so the ground probe can exclude the jet
 const partEntities=[jet];
+// The real airframe: bohmerang's F-16 glTF (CC BY-NC-SA 4.0, src/jet/license.txt), modelled in decimetres with the nose on +X and +Y up,
+// so Cesium's Y-up fix alone turns it into the body frame. Shifted back so its nozzle sits on the plume. The hand-built jet stays
+// until the model is ready and remains the fallback if the file never loads.
+const JET_FIX=C.Matrix4.fromTranslationQuaternionRotationScale(V(-2.35,0,-0.3),C.Quaternion.IDENTITY,V(0.1,0.1,0.1));let jetModel=null;
+C.Model.fromGltfAsync({url:'jet/scene.gltf',modelMatrix:jet.modelMatrix,upAxis:C.Axis.Y,forwardAxis:C.Axis.X,allowPicking:true,incrementallyLoadTextures:false}).then(m=>{scene.primitives.add(m);m.readyEvent.addEventListener(()=>{for(const n of ['F-16-landingOn_6','F-16-landingOnLight_7']){const nd=m.getNode(n);if(nd)nd.show=false;}m.lightColor=new C.Cartesian3(2.2,2.1,2.0);jetModel=m;EXCL.push(m);});}).catch(e=>console.warn('jet model unavailable',e));
 // afterburner plumes: two translucent cones behind the nozzles, shown only while Shift is held
 const flameInst=[new C.GeometryInstance({geometry:cylG(5.5,0.1,0.9),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.95,0,-0.05),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}})];   // one engine, one plume
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:true}));flame.show=false;   // pickable so the ground probe can exclude it
@@ -527,7 +533,7 @@ void main(){
   out_FragColor=vec4(texture(colorTexture,uv-off).rgb,1.0);
 }`;
 if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
-function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;}
+function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;if(jetModel)jetModel.modelMatrix=C.Matrix4.multiply(jet.modelMatrix,JET_FIX,new C.Matrix4());}
 function updateBoomFx(realDt){
   if(boomAge<0)return;
   boomAge+=realDt;if(boomAge>1.8){boomAge=-1;updateVapor(false);return;}
@@ -567,7 +573,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
 const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame]);   // never let the probe land on the jet's own effects
-window.__lsf={scene,get tileset(){return tileset;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
+window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
@@ -788,7 +794,7 @@ function sonicBoom(kind){boomKind=kind||1;boomSound();boomAge=0;shake=0.45;$('fl
 const camDest=new C.Cartesian3(),camDir=new C.Cartesian3(),camUp=new C.Cartesian3(),lookL=new C.Cartesian3(),desired=new C.Cartesian3();
 function updateCamera(dt){
   body(AX,fwd);body(AZ,up);
-  const bodyVisible=cam!=='cockpit';partEntities.forEach(e=>e.show=bodyVisible);
+  const bodyVisible=cam!=='cockpit';partEntities.forEach(e=>e.show=bodyVisible&&!jetModel);if(jetModel)jetModel.show=bodyVisible;   // the hand-built jet stands in until the glTF is ready
   if(cam==='cockpit'){desired.x=pos.x+fwd.x*2.5+up.x*1.3;desired.y=pos.y+fwd.y*2.5+up.y*1.3;desired.z=pos.z+fwd.z*2.5+up.z*1.3;C.Cartesian3.clone(desired,camPos);toWorld(camPos,camDest);toWorldVec(fwd,camDir);toWorldVec(up,camUp);}
   else{desired.x=pos.x-fwd.x*30+up.x*6.5;desired.y=pos.y-fwd.y*30+up.y*6.5;desired.z=pos.z-fwd.z*30+up.z*6.5;if(crashed>0)C.Cartesian3.clone(camPos,desired);
     const k=1-Math.exp(-dt*5);camPos.x+=(desired.x-camPos.x)*k;camPos.y+=(desired.y-camPos.y)*k;camPos.z+=(desired.z-camPos.z)*k;
