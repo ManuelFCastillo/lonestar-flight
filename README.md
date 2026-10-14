@@ -32,6 +32,12 @@ npm test
 
 GitHub Actions runs both on every push and pull request (`.github/workflows/test.yml`).
 
+### Tile-streaming benchmark
+
+`node scripts/perf-tiles.mjs` boots the live site in headless Chromium, takes off with the afterburner lit and counts, per frame, how many tiles in the middle of the screen are drawn coarser than their target ("blurry"), along with frame rate and pending requests. Each run uses a fresh browser context, so the tile cache is cold and runs compare fairly. It is how the cache-size and request settings in `loadCity()` were chosen: at a 1 GB cache the tileset evicted and re-fetched tiles constantly (380 evictions in 16 s, 23 fps) where 3 GB had none (33 fps), so desktops with 8 GB or more get 2.5 GB.
+
+`--lookahead alternate` A/B-tests an experimental second tileset traversal from a camera 650 m ahead of the jet (`Cesium3DTilePass.PRELOAD`). On a cold cache it did not reduce blurry frames (10.2 vs 10.4 per frame on the first pair, 2.3 vs 6.9 on the second), so it is not in the game. Headless Chromium renders in software, so the absolute numbers are far below what a GPU sees; only the A/B comparison is meaningful.
+
 ## Controls
 
 Arrows pitch, and bank into a turn (hold to tighten, release to level, 65° max) · Q/E full roll · A/D rudder · W/S throttle · Shift afterburner, hold for Mach 1 and Mach 2 · Space smoke · C camera · X pilot assist · R reset · P pause · I invert pitch · N music · L night / dusk · M sound · F fullscreen
