@@ -738,9 +738,10 @@ function startMnv(type,dir,say){mnv={type,t:0,dir:dir||1};if(say)toast(say);}
 function endMnv(){mnv=null;mnvCool=0.4;}
 function step(dt){
   if(crashed>0){crashed-=dt;if(crashed<=0){spawn();$('flash').style.opacity=0;}return;}
-  if(autopilot&&mode==='tour'&&!finished){const g=GATES[gate],dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(G.headingDeg(fwd.x,fwd.y),dx,dy);K.ArrowRight=rel>3;K.ArrowLeft=rel<-3;
-    const err=Math.atan2(g.local.z-pos.z,Math.max(1,Math.hypot(dx,dy)))-Math.asin(clamp(fwd.z,-1,1));K.ArrowUp=err>0.025;K.ArrowDown=err<-0.025;}   // autopilot flies the tour through the arrow keys
   let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);let turnIn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);
+  if(autopilot&&mode==='tour'&&!finished){const g=GATES[gate],dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(G.headingDeg(fwd.x,fwd.y),dx,dy);
+    const err=Math.atan2(g.local.z-pos.z,Math.max(1,Math.hypot(dx,dy)))-Math.asin(clamp(fwd.z,-1,1));
+    turnIn=clamp(rel/30,-1,1);pitchIn=clamp(err/0.12,-1,1);}   // autopilot: proportional stick toward the gate, so it settles instead of hunting
   if(TOUCH&&!pitchIn&&!turnIn){const t=touchInputs();pitchIn=t.pitch;turnIn=t.turn;}   // tilt or the drag stick, analog
   if(invert)pitchIn=-pitchIn;
   let rollIn=0;const rawRoll=(K.KeyE?1:0)-(K.KeyQ?1:0);   // Q/E: full aerobatic roll; arrows: bank-to-turn
