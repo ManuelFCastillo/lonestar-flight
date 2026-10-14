@@ -393,7 +393,7 @@ const jet=scene.primitives.add(new C.Primitive({geometryInstances:inst,appearanc
 const partEntities=[jet];
 // afterburner plumes: two translucent cones behind the nozzles, shown only while Shift is held
 const flameInst=[];for(const s of [-1,1])flameInst.push(new C.GeometryInstance({geometry:cylG(4.5,0.08,0.62),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.25,0.75*s,-0.1),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}}));
-const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:false}));flame.show=false;
+const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:true}));flame.show=false;   // pickable so the ground probe can exclude it
 // sonic boom, the real look: a Prandtl-Glauert vapor disc that forms around the fuselage and wings, swells and tears away,
 // plus a faint refraction ripple across the frame. No glowing rings; real shocks are invisible.
 let boomAge=-1;const boomUV=new C.Cartesian2(0.5,0.5),winTmp=new C.Cartesian2();
@@ -461,7 +461,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
-const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol]);
+const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame]);   // never let the probe land on the jet's own effects
 window.__lsf={scene,get tileset(){return tileset;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
 const gTmp=new C.Cartesian3();
