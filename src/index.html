@@ -597,7 +597,7 @@ function updateCamera(dt){
 }
 
 // ---------- per-frame ----------
-let last=performance.now(),T=0,idleA=0,diagFrames=0,diagT=0;
+let last=performance.now(),T=0,idleA=0,diagFrames=0,diagT=0,sseFps=0,sseSamples=0,sseLocked=false;
 const smokeTmp=new C.Cartesian3();
 scene.preUpdate.addEventListener(()=>{
   const now=performance.now();const realDt=Math.min(0.05,(now-last)/1000);last=now;
@@ -619,8 +619,10 @@ scene.preUpdate.addEventListener(()=>{
     if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
     diagFrames++;diagT+=realDt;if(diagT>=1){const fps=diagFrames/diagT;
-      if(tileset){const target=fps>55?10:fps>40?13:fps>28?16:22;tileset.maximumScreenSpaceError+=(target-tileset.maximumScreenSpaceError)*0.35;}   // adaptive detail
-      if(!$('diag').hidden){const s=tileset?tileset.statistics:null,rs=C.RequestScheduler.statistics;$('diag').textContent=fps.toFixed(0)+' fps   detail target '+(tileset?tileset.maximumScreenSpaceError.toFixed(1):'-')+' px\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nrequests '+rs.numberOfAttemptedRequests+'  cancelled '+rs.numberOfCancelledRequests+'  failed '+rs.numberOfFailedRequests+'  tiles failed '+tileFails+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';}
+      // Detail is chosen once from the first six seconds of flight and then frozen: a detail target that keeps moving
+      // re-decides every tile near the threshold each time it moves, which reads as LOD flicker across the whole city.
+      if(tileset&&!sseLocked){sseFps+=fps;sseSamples++;if(sseSamples>=6){const avg=sseFps/sseSamples;tileset.maximumScreenSpaceError=avg>50?12:avg>32?16:22;sseLocked=true;}}
+      if(!$('diag').hidden){const s=tileset?tileset.statistics:null,rs=C.RequestScheduler.statistics;$('diag').textContent=fps.toFixed(0)+' fps   detail '+(tileset?tileset.maximumScreenSpaceError.toFixed(0):'-')+' px'+(sseLocked?' (locked)':' (measuring)')+'\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nrequests '+rs.numberOfAttemptedRequests+'  cancelled '+rs.numberOfCancelledRequests+'  failed '+rs.numberOfFailedRequests+'  tiles failed '+tileFails+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';}
       diagFrames=0;diagT=0;}
   }else{ // idle: slow orbit over downtown
     idleA+=dt*0.04;const cx=-600+Math.cos(idleA)*1800,cy=1200+Math.sin(idleA)*1800;const c=V(cx,cy,ell(600));toWorld(c,camDest);const d=V(0-cx,900-cy,ell(200)-c.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});partEntities.forEach(e=>e.show=false);
