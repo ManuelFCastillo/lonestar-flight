@@ -86,25 +86,24 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 #tools button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:grid;place-items:center;font-size:13px;font-weight:600}
 #tools button[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
 #start{position:fixed;inset:0;z-index:10;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:24px;padding-block:80px 32px;padding-inline:clamp(16px,5vw,64px);background:linear-gradient(180deg,rgba(18,26,43,.55),rgba(18,26,43,.25) 50%,rgba(18,26,43,.75));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-/* touch start screen: compact enough that Take off is above the fold on a phone held sideways */
-body.touch #start{grid-template-columns:1fr;align-content:start;gap:10px;padding-block:66px 14px}
-body.touch #start .card{order:-1;padding:12px 14px}
-body.touch .card .step{margin-bottom:8px}
-body.touch .modes{gap:8px;margin-bottom:8px}
-body.touch .mode{padding:8px 10px;gap:2px}
-body.touch .mode .n{font-size:18px}
-body.touch .mode .d,body.touch .mode .glyph,body.touch .brief,body.touch .note,body.touch #touchnote{display:none}
-body.touch #go{padding:10px 14px;font-size:18px}
-body.touch .opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-body.touch .opt{margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;gap:6px;align-items:center;line-height:1}
+/* touch start screen: a small panel in the bottom-left corner; the city stays the view */
+body.touch #start{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:0;padding:0 0 calc(12px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px));background:linear-gradient(180deg,rgba(18,26,43,.15),rgba(18,26,43,.0) 40%,rgba(18,26,43,.55))}
+body.touch #start .card{width:min(470px,calc(100vw - 24px));padding:10px 12px;background:rgba(14,19,32,.72)}
+body.touch .card .step{margin-bottom:7px;font-size:9px}
+body.touch .modes{gap:6px;margin-bottom:7px}
+body.touch .mode{padding:6px 10px;gap:0}
+body.touch .mode .n{font-size:15px}
+body.touch .mode .tag{position:static;margin-left:auto;font-size:8px}
+body.touch .mode{display:flex;align-items:center}
+body.touch .mode .d,body.touch .mode .glyph,body.touch .brief,body.touch .note,body.touch #touchnote,body.touch .hero{display:none}
+body.touch #go{padding:9px 12px;font-size:16px}
+body.touch #go span:last-child{font-size:15px}
+body.touch .opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+body.touch .opt{margin:0;padding:5px 9px;border:1px solid var(--line);border-radius:999px;font-size:11px;gap:5px;align-items:center;line-height:1}
 body.touch .opt span{font-size:0}
-body.touch .opt b{font-size:12px;color:var(--fg)}
-body.touch .opt input{width:14px;height:14px;margin:0}
-body.touch .hero{order:1;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
-body.touch .hero h1{font-size:24px;margin:0;line-height:1}
-body.touch .hero h1 br{display:none}
-body.touch .hero .eyebrow,body.touch .hero p{display:none}
-body.touch .hero .meta{font-size:10px;gap:14px}
+body.touch .opt b{font-size:11px;color:var(--fg)}
+body.touch .opt kbd{display:none}
+body.touch .opt input{width:13px;height:13px;margin:0}
 #start.hidden{display:none}
 .hero .eyebrow{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:12px}
 .hero .eyebrow::before{content:"";width:40px;height:1px;background:var(--gold)}
@@ -219,7 +218,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
       <button class="mode" id="mFree" aria-pressed="false"><span class="tag">Freedom</span><span class="glyph">∞</span><span class="n">Free flight</span><span class="d">No gates, no clock. Just you and Austin.</span></button>
     </div>
     <p class="brief" id="brief"></p>
-    <button id="go" disabled><span id="goText">Streaming Austin…</span><span>↗</span></button>
+    <button id="go" disabled><span id="goText">Streaming Austin…</span><span>&#x2197;&#xFE0E;</span></button>
     <div class="keys">
       <div><kbd>↑</kbd><kbd>↓</kbd> pitch</div><div><kbd>←</kbd><kbd>→</kbd> bank and turn</div><div><kbd>Q</kbd><kbd>E</kbd> full roll</div>
       <div><kbd>A</kbd><kbd>D</kbd> rudder</div>
