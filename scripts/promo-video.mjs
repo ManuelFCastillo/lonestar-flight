@@ -26,7 +26,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const gateIs = async (n) => { try { await page.waitForFunction((n) => window.__lsf.gate >= n, n, { timeout: 120_000 }); } catch (e) { await page.screenshot({ path: 'promo/raw/fail.png' }); throw new Error(`gate ${n} not reached in 120 s (see promo/raw/fail.png): ` + await page.evaluate(() => document.getElementById('gate').textContent.replace(/\s+/g, ' ') + ' spd ' + document.getElementById('spd').textContent + ' alt ' + document.getElementById('alt').textContent)); } console.error(`gate ${n} at ${((Date.now() - t0) / 1000).toFixed(1)} s`); };
 const gateDist = () => page.evaluate(() => { const t = document.getElementById('gDist').textContent; const v = parseFloat(t); return /km/.test(t) ? v * 1000 : v; });
 // the skyline refines behind the start screen; take off only once the city has really streamed in, or the ground probe reads coarse root tiles
-await page.waitForFunction(() => { const t = window.__lsf.tileset; return t && t.statistics.numberOfTilesWithContentReady > 400 && t.statistics.numberOfPendingRequests < 10; }, null, { timeout: 240_000 }).catch(() => console.error('WARNING: city still streaming after 4 min; this connection is slow and the recording will look blurry'));
+await page.waitForFunction(() => { const t = window.__lsf.tileset; return t && t.statistics.numberOfTilesWithContentReady > 700; }, null, { timeout: 240_000 }).catch(() => console.error('WARNING: city still streaming after 4 min; this connection is slow and the recording will look blurry'));
 await sleep(2500);
 const tEnter = clock();
 await page.keyboard.press('Enter');
@@ -52,10 +52,10 @@ await sleep(4500);
 await page.keyboard.up('Space');
 await sleep(1200);
 const flightLen = at();
-// the same flight again, from the other cameras, for the cut-aways
+// The whole picture comes from the replay, not the live pass: the live pass has streamed the route into the tile cache, so
+// the replay renders the city sharp even on a slow connection. The chase camera in replay is the same view a player gets.
 const cuts = [[marks.bridge - 3.2, marks.bridge + 2.2, 'gate'], [marks.mach2 + 0.3, marks.mach2 + 5.3, 'orbit'], [marks.bonnell - 1.2, marks.bonnell + 3.8, 'side']];
 const skips = marks.bonnell - 7 - (marks.mach2 + 6.5) > 3 ? [[marks.mach2 + 6.5, marks.bonnell - 7]] : [];   // jump-cut the long straight run over the hills
-await page.addStyleTag({ content: '#toast{display:none!important}' });
 const tReplay = clock();
 if (!await page.evaluate(() => window.__lsf.startReplay(null, { cams: ['chase'], per: 1e9 }))) throw new Error('nothing recorded to replay');
 for (const [a, b, cam] of cuts) {
@@ -68,10 +68,9 @@ await ctx.close();
 const raw = await page.video().path();
 await browser.close();
 // assemble: live gameplay with the cut-aways spliced in at the same flight time
-const events = [...cuts.map(([a, b]) => [a, b, 'replay']), ...skips.map(([a, b]) => [a, b, 'skip'])].sort((x, y) => x[0] - y[0]);
-const segs = []; let cur = -LEAD;                                     // flight-relative seconds; negative covers the start screen
-for (const [a, b, kind] of events) { if (a > cur) segs.push([tFlight + cur, tFlight + a, 'live']); if (kind === 'replay') segs.push([tReplay + a, tReplay + b, 'replay']); cur = Math.max(cur, b); }
-segs.push([tFlight + cur, tFlight + flightLen, 'live']);
+const segs = [[tFlight - LEAD, tFlight, 'start screen']]; let cur = 0;   // flight-relative seconds; the start screen comes from before take-off
+for (const [a, b] of skips.sort((x, y) => x[0] - y[0])) { if (a > cur) segs.push([tReplay + cur, tReplay + a, 'replay']); cur = Math.max(cur, b); }
+segs.push([tReplay + cur, tReplay + flightLen, 'replay']);
 const dur = segs.reduce((n, [a, b]) => n + (b - a), 0);
 const filter = segs.map(([a, b], i) => `[0:v]trim=start=${a.toFixed(3)}:end=${b.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`).join(';') + ';' + segs.map((_, i) => `[v${i}]`).join('') + `concat=n=${segs.length}:v=1:a=0,fade=t=in:d=0.6,fade=t=out:st=${Math.max(0, dur - 1).toFixed(2)}:d=1[v]`;
 const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');

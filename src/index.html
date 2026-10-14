@@ -819,9 +819,9 @@ function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:spee
 function startReplay(frames,opts){frames=frames||REC.slice();opts=opts||{};if(frames.length<2||frames[frames.length-1].t-frames[0].t<1){toast('Nothing to replay yet');return false;}
   replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,per:opts.per||7,anchor:null,orbA:0,
     saved:{p:C.Cartesian3.clone(pos),q:C.Quaternion.clone(q),s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,cam,bankTarget,gate,elapsed}};
-  mnv=null;lowWarn=false;boomAge=-1;$('pCam').textContent='Replay';toast('Instant replay');return true;}
+  mnv=null;lowWarn=false;boomAge=-1;$('pCam').textContent=replay.cams[0]==='chase'?'Chase':'Replay';toast('Instant replay');return true;}
 function endReplay(){if(!replay)return;const s=replay.saved;replay=null;C.Cartesian3.clone(s.p,pos);C.Quaternion.clone(s.q,q);speed=s.s;throttle=s.th;burner=s.b;smokeOn=s.sm;tricolor=s.tc;cam=s.cam;bankTarget=s.bankTarget;gate=s.gate;elapsed=s.elapsed;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);boomAge=-1;boomFlag=0;$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';toast('Live');}
-function setReplayCam(name){if(!replay)return;const i=replay.cams.indexOf(name);if(i<0)replay.cams.push(name);replay.camI=i<0?replay.cams.length-1:i;replay.camT=0;replay.anchor=null;}
+function setReplayCam(name){if(!replay)return;const i=replay.cams.indexOf(name);if(i<0)replay.cams.push(name);replay.camI=i<0?replay.cams.length-1:i;replay.camT=0;replay.anchor=null;$('pCam').textContent=name==='chase'?'Chase':'Replay';}
 function replayStep(dt){const r=replay;r.t+=dt;const f=r.f;while(r.i<f.length-1&&f[r.i+1].t<=r.t)r.i++;if(r.i>=f.length-1){endReplay();return;}
   const a=f[r.i],b=f[r.i+1],u=clamp((r.t-a.t)/Math.max(1e-6,b.t-a.t),0,1);
   pos.x=a.p[0]+(b.p[0]-a.p[0])*u;pos.y=a.p[1]+(b.p[1]-a.p[1])*u;pos.z=a.p[2]+(b.p[2]-a.p[2])*u;
@@ -830,7 +830,7 @@ function replayStep(dt){const r=replay;r.t+=dt;const f=r.f;while(r.i<f.length-1&
   if(a.g!==undefined&&a.g!==gate){gate=a.g;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);}if(a.e!==undefined)elapsed=a.e;   // the HUD and the rings show the recorded moment
   if(a.boom&&r.lastBoomI!==r.i){r.lastBoomI=r.i;sonicBoom(a.boom);boomFlag=0;}
   body(AX,fwd);body(AY,left);body(AZ,up);trail(dt);
-  r.camT+=dt;if(r.camT>=r.per){r.camT=0;r.camI=(r.camI+1)%r.cams.length;r.anchor=null;}}
+  r.camT+=dt;if(r.camT>=r.per){r.camT=0;r.camI=(r.camI+1)%r.cams.length;r.anchor=null;$('pCam').textContent=r.cams[r.camI]==='chase'?'Chase':'Replay';}}
 function replayCamera(dt){const r=replay,m=r.cams[r.camI];
   if(m==='orbit'){r.orbA+=dt*0.3;const R=46+Math.sin(r.orbA*0.7)*10;camPos.x=pos.x+Math.cos(r.orbA)*R;camPos.y=pos.y+Math.sin(r.orbA)*R;camPos.z=pos.z+12;}
   else if(m==='gate'){if(!r.anchor){const g=GATES[Math.min(gate,GATES.length-1)];r.anchor={x:g.local.x+fwd.x*140-left.x*110,y:g.local.y+fwd.y*140-left.y*110,z:g.local.z+24};}camPos.x=r.anchor.x;camPos.y=r.anchor.y;camPos.z=r.anchor.z;}
