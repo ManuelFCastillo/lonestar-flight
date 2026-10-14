@@ -28,19 +28,22 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);overf
 /* touch layer: only on coarse pointers */
 #touch{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}
 #touch.on{display:block}
-.tc{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;pointer-events:auto}
-.tc.left{left:calc(14px + env(safe-area-inset-left,0px));flex-direction:column;align-items:center}
-.tc.right{right:calc(14px + env(safe-area-inset-right,0px));flex-wrap:wrap;justify-content:flex-end;max-width:46vw}
-.tb{min-width:72px;min-height:52px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.08em;touch-action:none;-webkit-user-select:none;user-select:none}
+.tc{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));pointer-events:auto}
+.tc.left{left:calc(14px + env(safe-area-inset-left,0px));display:flex;flex-direction:column-reverse;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 8px}
+.tc.right{right:calc(14px + env(safe-area-inset-right,0px));display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tb{min-width:96px;min-height:56px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;touch-action:none;-webkit-user-select:none;user-select:none}
 .tb.on{color:var(--gold);border-color:var(--gold)}
 .tb.act{background:var(--gold);color:#1a1405}
-#tThr{writing-mode:vertical-lr;direction:rtl;height:150px;width:44px;accent-color:var(--gold);touch-action:none}
-.tc.left span{font-size:10px;letter-spacing:.2em;color:var(--muted)}
+#tThr{writing-mode:vertical-lr;direction:rtl;height:160px;width:40px;accent-color:var(--gold);touch-action:none;margin:0}
+.tc.left span{font-size:9px;letter-spacing:.2em;color:var(--muted);writing-mode:horizontal-tb}
+/* touch layout: keyed on a body class set by the same check that enables the touch controls */
+body.touch .ro.right,body.touch .keys{display:none}
+body.touch .ro.left{left:calc(92px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+body.touch #pullup{top:22%}
 #stick{position:absolute;width:120px;height:120px;border-radius:50%;border:1px solid var(--line);background:rgba(14,19,32,.35);pointer-events:none;transform:translate(-50%,-50%)}
 #stickKnob{position:absolute;left:50%;top:50%;width:44px;height:44px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);opacity:.85}
 #rotate{position:fixed;inset:0;z-index:12;display:none;place-items:center;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:28px;letter-spacing:.08em;text-align:center;padding:24px}
 @media (pointer:coarse) and (orientation:portrait){#rotate.want{display:grid}}
-@media (pointer:coarse){.keys{display:none}.ro.left{bottom:calc(190px + env(safe-area-inset-bottom,0px))}.ro.right{display:none}#tools{top:calc(14px + env(safe-area-inset-top,0px))}}
 .cesium-widget-credits{position:fixed!important;left:50%!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%);font-size:10px;color:var(--muted);z-index:4;background:rgba(14,19,32,.55);padding:2px 8px;border-radius:3px}
 .cesium-credit-logoContainer img{height:16px}
 .cesium-widget-credits a{color:var(--fg)}
@@ -212,7 +215,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 </div>
 <div id="flash"></div>
 <div id="touch" aria-label="Touch controls">
-  <div class="tc left"><input type="range" id="tThr" min="0" max="100" value="60" aria-label="Throttle"><span>THROTTLE</span></div>
+  <div class="tc left"><input type="range" id="tThr" min="0" max="100" value="60" aria-label="Throttle"><span>THR</span></div>
   <div class="tc right">
     <button class="tb" id="tBurn">BURNER</button><button class="tb" id="tSmoke">SMOKE</button>
     <button class="tb on" id="tAssist">ASSIST</button><button class="tb" id="tCam">CAM</button>
@@ -555,7 +558,7 @@ async function enableMotion(){
   return true;
 }
 if(TOUCH){
-  $('rotate').classList.add('want');
+  $('rotate').classList.add('want');document.body.classList.add('touch');
   const press=(id,on,off)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('act');on();});const up=e=>{el.classList.remove('act');off();};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);};
   press('tBurn',()=>{K.ShiftLeft=true;},()=>{K.ShiftLeft=false;});
   press('tSmoke',()=>{K.Space=true;spaceDownAt=performance.now();},()=>{K.Space=false;if(playing&&performance.now()-spaceDownAt<450)smokeOn=!smokeOn;});
