@@ -178,14 +178,14 @@ describe('pilot assist', () => {
     assert.equal(G.chooseManeuver({ center: 60, left: 30, right: 10 }, 100).type, 'jink');   // right side is open enough
     assert.equal(G.chooseManeuver({ center: 20, left: 30, right: 40 }, 100).type, 'barrel'); // boxed in but the obstacle is small: roll over it
   });
-  test('precision guard: near a gate or hands-on, only a real wall may take the stick, never a barrel roll', () => {
+  test('precision guard: near a gate or hands-on the pilot is in command, no moves at all', () => {
     const small = { center: 15, left: 0, right: 0 }, wall = { center: 60, left: 30, right: 40 };
     const barrel = G.chooseManeuver(small, 100), pull = G.chooseManeuver(wall, 100);
     assert.equal(barrel.type, 'barrel');
     assert.equal(G.allowManeuver(barrel, small, false), barrel);         // normal flight: fine
     assert.equal(G.allowManeuver(barrel, small, true), null);            // lining up a gate: leave the pilot alone
-    assert.equal(G.allowManeuver(pull, wall, true), pull);               // a real wall still gets a move
-    assert.equal(G.allowManeuver({ type: 'barrel', dir: 1 }, { center: 50, left: 0, right: 0 }, true), null);
+    assert.equal(G.allowManeuver(pull, wall, true), null);               // even a wall: assist cannot crash, the pilot flies
+    assert.equal(G.allowManeuver(pull, wall, false), pull);
     assert.equal(G.allowManeuver(null, small, true), null);
   });
   test('jink timeline: roll in, pull around, roll out, done', () => {

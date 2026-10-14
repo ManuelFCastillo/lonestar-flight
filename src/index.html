@@ -97,6 +97,9 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 #clock{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:18px;font-family:var(--display);font-weight:700;font-size:22px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;line-height:1}
 #warn{position:fixed;top:36%;left:50%;transform:translateX(-50%);font-family:var(--display);font-weight:900;font-size:28px;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;opacity:0;transition:opacity .2s}
 #warn.on{opacity:1}
+#pullup{position:fixed;top:28%;left:50%;transform:translateX(-50%);font-family:var(--display);font-weight:900;font-size:34px;letter-spacing:.16em;text-transform:uppercase;color:#ff3b30;border:2px solid #ff3b30;border-radius:4px;padding:6px 16px;animation:pullup .32s steps(1) infinite}
+@keyframes pullup{0%{opacity:1}50%{opacity:.15}}
+@media (prefers-reduced-motion:reduce){#pullup{animation:none}}
 #toast{position:fixed;bottom:120px;left:50%;transform:translate(-50%,10px);background:var(--panel);border:1px solid var(--gold);border-radius:6px;padding:10px 16px;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.04em;opacity:0;transition:opacity .25s,transform .25s;max-width:calc(100vw - 32px);text-align:center}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6;transition:opacity .4s}
@@ -173,6 +176,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <div id="gate"><svg class="arrow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l7 18-7-4-7 4z"/></svg><div><div class="n" id="gName"></div><div class="d"><span id="gIdx"></span> · <span id="gDist"></span><span class="vd" id="gVert"></span></div></div></div>
   <div id="clock">0:00</div>
   <div id="warn">Turn back</div>
+  <div id="pullup" hidden>Pull up</div>
   <div class="ro left">
     <div><div class="k">Speed</div><div class="v"><span id="spd">0</span><span class="u" id="spdU">kt</span></div></div>
     <div><div class="k">Altitude</div><div class="v"><span id="alt">0</span><span class="u">ft AGL</span></div></div>
@@ -479,7 +483,7 @@ let anchorCursor=0;
 function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
 
 // ---------- state ----------
-const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false;
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9;
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
 const camPos=V(0,0,0);
 function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
@@ -514,6 +518,10 @@ function boomSound(){if(!AC||!soundOn)return;const t=AC.currentTime;const comp=A
   hit(t,95,28,0.9,0.9);hit(t+0.14,70,24,0.8,1.1);
   const n=AC.createBufferSource(),buf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.5);n.buffer=buf;
   const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.setValueAtTime(220,t);lp.frequency.exponentialRampToValueAtTime(60,t+0.8);const ng=AC.createGain();ng.gain.setValueAtTime(0.6,t);ng.gain.exponentialRampToValueAtTime(0.0001,t+0.9);n.connect(lp);lp.connect(ng);ng.connect(comp);n.start(t);}
+// ground proximity warning: the classic fast beep plus a spoken "pull up" every couple of seconds
+function gpws(now){if(!lowWarn)return;
+  if(now-lastBeep>0.32){lastBeep=now;if(AC&&soundOn){const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.1,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+0.14);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+0.16);}}
+  if(now-lastVoice>2.4){lastVoice=now;if(soundOn&&window.speechSynthesis){try{const u=new SpeechSynthesisUtterance('Pull up');u.rate=1.15;u.pitch=0.75;u.volume=0.9;speechSynthesis.speak(u);}catch(e){}}}}
 function toggleSound(){soundOn=!soundOn;$('bSound').setAttribute('aria-pressed',String(soundOn));}
 $('bSound').addEventListener('click',toggleSound);
 function fullscreen(){const el=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
@@ -591,7 +599,7 @@ function step(dt){
     assistAct=mnv?1:0;
     if(mnv){mnv.t+=dt;const bankL=Math.asin(clamp(rightZ,-1,1));const mi=G.maneuverInputs(mnv.type,mnv.t,mnv.dir,bankL,Math.sign(rightZ),-1);   // -1: the roll input that banks left here
       if(mi.done)endMnv();else{agility=1;rollIn=mi.rollIn;pitchIn=mi.pitchIn;free=mi.free;rollRate=mi.rollRate;pitchRate=mi.pitchRate;}}
-    if(!mnv){rollRate=2.6;pitchRate=1.0;if(agl<18&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
+    if(!mnv){rollRate=2.6;pitchRate=1.0;if(agl<10&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
   }else{pitchRate=1.0;}
   const prevSpeed=speed;speed=G.stepSpeed(speed,throttle,fwd.z,dt,burner,burnerHeld);
   if(G.boomCrossing(prevSpeed,speed)){speed+=G.BOOM_KICK;sonicBoom(1);}
@@ -617,8 +625,9 @@ function step(dt){
   groundTick++;if(groundTick%4===0){const c=C.Cartographic.fromCartesian(toWorld(pos,tmpV));const h=sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));if(h!==undefined){groundH=h;floorH=G.trackFloor(floorH,h);}}   // floorH rises slowly: it tracks terrain, not rooftops
   const agl=groundH===undefined?999:pos.z-groundH;
   if(assist){ // hard floor on the terrain only; a building you fail to dodge is passed through, not climbed over
-    if(floorH!==undefined&&pos.z<floorH+8)pos.z=floorH+8;
+    if(floorH!==undefined&&pos.z<floorH+5)pos.z=floorH+5;
   }else if(agl<4){crash();return;}
+  lowWarn=groundH!==undefined&&agl<26&&fwd.z<0.08;   // ground proximity: the beeper and the PULL UP flasher
   spaceHeld=K.Space?spaceHeld+dt:0;tricolor=spaceHeld>=0.45;
   if(smokeOn||tricolor){const n=Math.max(1,Math.round(speed*dt/2.2));
     const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*2.2,sy-fwd.y*i*2.2,sz-fwd.z*i*2.2),null,tint);};
@@ -672,6 +681,7 @@ scene.preUpdate.addEventListener(()=>{
     $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn||tricolor);$('pSmoke').textContent=tricolor?'Red white blue':'Smoke';$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
     if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
+    $('pullup').hidden=!(lowWarn&&!paused);if(!paused)gpws(T);
     diagFrames++;diagT+=realDt;if(diagT>=1){const fps=diagFrames/diagT;
       // Detail is chosen once from the first six seconds of flight and then frozen: a detail target that keeps moving
       // re-decides every tile near the threshold each time it moves, which reads as LOD flicker across the whole city.
