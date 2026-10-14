@@ -4,11 +4,12 @@
 // through the Mount Bonnell gate. The game then replays the same flight and three short cut-aways are taken from other
 // cameras (a camera on the bridge as the jet comes through the bats, orbit at Mach 2, abeam for the roll); the quiet middle of the hill-country approach
 // is jump-cut. ffmpeg assembles the cut and lays the soundtrack under it from its loud section.
-//   node scripts/promo-video.mjs [--url U] [--music-at SECONDS]     → promo/lonestar-flight.mp4
+//   node scripts/promo-video.mjs [--url U] [--music-at SECONDS]     → promo/lonestar-flight-<date>.mp4, copied to promo/lonestar-flight.mp4
+// Record on a fast connection: the city streams while the jet flies, and a slow link leaves the buildings blurry on camera.
 // Timings are wall-clock: the headed browser runs real time, and the replay runs at the same rate as the flight.
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, copyFileSync } from 'node:fs';
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const url = arg('url', 'https://lonestar-flight.vercel.app/'), MUSIC_AT = +arg('music-at', 222);
@@ -25,7 +26,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const gateIs = async (n) => { try { await page.waitForFunction((n) => window.__lsf.gate >= n, n, { timeout: 120_000 }); } catch (e) { await page.screenshot({ path: 'promo/raw/fail.png' }); throw new Error(`gate ${n} not reached in 120 s (see promo/raw/fail.png): ` + await page.evaluate(() => document.getElementById('gate').textContent.replace(/\s+/g, ' ') + ' spd ' + document.getElementById('spd').textContent + ' alt ' + document.getElementById('alt').textContent)); } console.error(`gate ${n} at ${((Date.now() - t0) / 1000).toFixed(1)} s`); };
 const gateDist = () => page.evaluate(() => { const t = document.getElementById('gDist').textContent; const v = parseFloat(t); return /km/.test(t) ? v * 1000 : v; });
 // the skyline refines behind the start screen; take off only once the city has really streamed in, or the ground probe reads coarse root tiles
-await page.waitForFunction(() => { const t = window.__lsf.tileset; return t && t.statistics.numberOfTilesWithContentReady > 250 && t.statistics.numberOfPendingRequests < 4; }, null, { timeout: 120_000 }).catch(() => console.error('tiles still streaming after 120 s, taking off anyway'));
+await page.waitForFunction(() => { const t = window.__lsf.tileset; return t && t.statistics.numberOfTilesWithContentReady > 400 && t.statistics.numberOfPendingRequests < 10; }, null, { timeout: 240_000 }).catch(() => console.error('WARNING: city still streaming after 4 min; this connection is slow and the recording will look blurry'));
 await sleep(2500);
 const tEnter = clock();
 await page.keyboard.press('Enter');
@@ -73,8 +74,10 @@ for (const [a, b, kind] of events) { if (a > cur) segs.push([tFlight + cur, tFli
 segs.push([tFlight + cur, tFlight + flightLen, 'live']);
 const dur = segs.reduce((n, [a, b]) => n + (b - a), 0);
 const filter = segs.map(([a, b], i) => `[0:v]trim=start=${a.toFixed(3)}:end=${b.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`).join(';') + ';' + segs.map((_, i) => `[v${i}]`).join('') + `concat=n=${segs.length}:v=1:a=0,fade=t=in:d=0.6,fade=t=out:st=${Math.max(0, dur - 1).toFixed(2)}:d=1[v]`;
-const out = 'promo/lonestar-flight.mp4';
+const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
+const out = `promo/lonestar-flight-${stamp}.mp4`;   // every take is kept; the newest is also copied to promo/lonestar-flight.mp4
 execFileSync('ffmpeg', ['-y', '-i', raw, '-ss', String(MUSIC_AT), '-i', 'src/austin-afterburner.m4a', '-filter_complex', filter, '-map', '[v]', '-map', '1:a',
   '-c:v', 'libx264', '-preset', 'slow', '-crf', '19', '-pix_fmt', 'yuv420p', '-r', '30', '-af', `afade=t=in:d=1,afade=t=out:st=${Math.max(0, dur - 2.5).toFixed(2)}:d=2.5`,
   '-c:a', 'aac', '-b:a', '160k', '-t', dur.toFixed(2), '-movflags', '+faststart', out], { stdio: ['ignore', 'ignore', 'inherit'] });
+copyFileSync(out, 'promo/lonestar-flight.mp4');
 console.log(`wrote ${out} (${dur.toFixed(1)} s; marks ${JSON.stringify(marks)})`);
