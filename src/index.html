@@ -582,7 +582,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
 const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame]);   // never let the probe land on the jet's own effects
-window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},startReplay,endReplay,setReplayCam,probe:true};   // debug hook: tile statistics and a switch for the terrain probe
+window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
@@ -590,8 +590,8 @@ let anchorCursor=0;
 function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
 
 // ---------- state ----------
-const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9,replay=null,boomFlag=0;
-const REC=[];   // the last 60 s of flight, one entry per frame, for the instant replay
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9,replay=null,boomFlag=0,autopilot=false;
+const REC=[];   // the last three minutes of flight, one entry per frame, for the instant replay
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
 const camPos=V(0,0,0),camOff=V(-30,0,6.5);
 function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
@@ -738,6 +738,8 @@ function startMnv(type,dir,say){mnv={type,t:0,dir:dir||1};if(say)toast(say);}
 function endMnv(){mnv=null;mnvCool=0.4;}
 function step(dt){
   if(crashed>0){crashed-=dt;if(crashed<=0){spawn();$('flash').style.opacity=0;}return;}
+  if(autopilot&&mode==='tour'&&!finished){const g=GATES[gate],dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(G.headingDeg(fwd.x,fwd.y),dx,dy);K.ArrowRight=rel>3;K.ArrowLeft=rel<-3;
+    const err=Math.atan2(g.local.z-pos.z,Math.max(1,Math.hypot(dx,dy)))-Math.asin(clamp(fwd.z,-1,1));K.ArrowUp=err>0.025;K.ArrowDown=err<-0.025;}   // autopilot flies the tour through the arrow keys
   let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);let turnIn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);
   if(TOUCH&&!pitchIn&&!turnIn){const t=touchInputs();pitchIn=t.pitch;turnIn=t.turn;}   // tilt or the drag stick, analog
   if(invert)pitchIn=-pitchIn;
@@ -807,7 +809,7 @@ function sonicBoom(kind){boomKind=kind||1;boomFlag=boomKind;boomSound();boomAge=
 // effects code, so the smoke, plumes and vapor are re-created rather than stored. T starts it; it hands the stick back when the tape runs out.
 const REPLAY_CAMS=['ground','side','chase','orbit'];
 const qa=new C.Quaternion(),qb=new C.Quaternion();
-function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,boom:boomFlag});boomFlag=0;while(REC.length&&REC[0].t<T-60)REC.shift();}
+function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,boom:boomFlag});boomFlag=0;while(REC.length&&REC[0].t<T-180)REC.shift();}
 function startReplay(frames,opts){frames=frames||REC.slice();opts=opts||{};if(frames.length<2||frames[frames.length-1].t-frames[0].t<1){toast('Nothing to replay yet');return false;}
   replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,per:opts.per||7,anchor:null,orbA:0,
     saved:{p:C.Cartesian3.clone(pos),q:C.Quaternion.clone(q),s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,cam,bankTarget}};
