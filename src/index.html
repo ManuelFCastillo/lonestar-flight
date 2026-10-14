@@ -593,7 +593,7 @@ function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anc
 const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9,replay=null,boomFlag=0;
 const REC=[];   // the last 60 s of flight, one entry per frame, for the instant replay
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
-const camPos=V(0,0,0);
+const camPos=V(0,0,0),camOff=V(-30,0,6.5);
 function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
 spawn();toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
 
@@ -826,8 +826,8 @@ function replayCamera(dt){const r=replay,m=r.cams[r.camI];
   if(m==='orbit'){r.orbA+=dt*0.3;const R=46+Math.sin(r.orbA*0.7)*10;camPos.x=pos.x+Math.cos(r.orbA)*R;camPos.y=pos.y+Math.sin(r.orbA)*R;camPos.z=pos.z+12;}
   else if(m==='side'){const hx=-fwd.y,hy=fwd.x,hl=Math.hypot(hx,hy)||1;camPos.x=pos.x+hx/hl*38-fwd.x*4;camPos.y=pos.y+hy/hl*38-fwd.y*4;camPos.z=pos.z+8;}   // abeam, level with the horizon
   else{ // ground: a fixed spot ahead and off to one side, re-placed once the jet has flown past it
-    if(!r.anchor||r.anchor.passed){const side=r.anchor?-r.anchor.side:1;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fwd.x*420+left.x*110*side,y:pos.y+fwd.y*420+left.y*110*side,z:Math.max(gz+18,pos.z-90),side,passed:false};}
-    const an=r.anchor,along=(pos.x-an.x)*fwd.x+(pos.y-an.y)*fwd.y;if(along>260||Math.hypot(pos.x-an.x,pos.y-an.y)>1400)an.passed=true;camPos.x=an.x;camPos.y=an.y;camPos.z=an.z;}
+    if(!r.anchor||r.anchor.passed){const side=r.anchor?-r.anchor.side:1;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fwd.x*260+left.x*75*side,y:pos.y+fwd.y*260+left.y*75*side,z:Math.max(gz+16,pos.z-70),side,passed:false};}
+    const an=r.anchor,along=(pos.x-an.x)*fwd.x+(pos.y-an.y)*fwd.y;if(along>170||Math.hypot(pos.x-an.x,pos.y-an.y)>1400)an.passed=true;camPos.x=an.x;camPos.y=an.y;camPos.z=an.z;}
   if(groundH!==undefined&&camPos.z<groundH+4)camPos.z=groundH+4;
   toWorld(camPos,camDest);const d=V(pos.x-camPos.x,pos.y-camPos.y,pos.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);
   C.Cartesian3.normalize(camDir,camDir);C.Cartesian3.normalize(camUp,camUp);scene.camera.frustum.fov=BASE_FOV;scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});}
@@ -839,8 +839,8 @@ function updateCamera(dt){
   const bodyVisible=cam!=='cockpit';partEntities.forEach(e=>e.show=bodyVisible&&!jetModel);if(jetModel)jetModel.show=bodyVisible;   // the hand-built jet stands in until the glTF is ready
   if(replay&&replay.cams[replay.camI]!=='chase'){replayCamera(dt);return;}
   if(cam==='cockpit'){desired.x=pos.x+fwd.x*2.5+up.x*1.3;desired.y=pos.y+fwd.y*2.5+up.y*1.3;desired.z=pos.z+fwd.z*2.5+up.z*1.3;C.Cartesian3.clone(desired,camPos);toWorld(camPos,camDest);toWorldVec(fwd,camDir);toWorldVec(up,camUp);}
-  else{desired.x=pos.x-fwd.x*30+up.x*6.5;desired.y=pos.y-fwd.y*30+up.y*6.5;desired.z=pos.z-fwd.z*30+up.z*6.5;if(crashed>0)C.Cartesian3.clone(camPos,desired);
-    const k=1-Math.exp(-dt*5);camPos.x+=(desired.x-camPos.x)*k;camPos.y+=(desired.y-camPos.y)*k;camPos.z+=(desired.z-camPos.z)*k;
+  else{const back=30+clamp((speed-200)/500,0,1)*18;desired.x=-fwd.x*back+up.x*6.5;desired.y=-fwd.y*back+up.y*6.5;desired.z=-fwd.z*back+up.z*6.5;   // the offset from the jet eases; the jet itself is never chased, so it stays the same size at Mach 2
+    const k=crashed>0?0:1-Math.exp(-dt*5);camOff.x+=(desired.x-camOff.x)*k;camOff.y+=(desired.y-camOff.y)*k;camOff.z+=(desired.z-camOff.z)*k;camPos.x=pos.x+camOff.x;camPos.y=pos.y+camOff.y;camPos.z=pos.z+camOff.z;
     if(shake>0){shake-=dt;const s=shake*3;camPos.x+=(Math.random()-0.5)*s;camPos.y+=(Math.random()-0.5)*s;camPos.z+=(Math.random()-0.5)*s;}
     if(groundH!==undefined&&camPos.z<groundH+5)camPos.z=groundH+5;
     toWorld(camPos,camDest);lookL.x=pos.x+fwd.x*45;lookL.y=pos.y+fwd.y*45;lookL.z=pos.z+fwd.z*45+2;const d=V(lookL.x-camPos.x,lookL.y-camPos.y,lookL.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);
