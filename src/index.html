@@ -364,11 +364,14 @@ const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,ap
 // plus a faint refraction ripple across the frame. No glowing rings; real shocks are invisible.
 let boomAge=-1;const boomUV=new C.Cartesian2(0.5,0.5),winTmp=new C.Cartesian2();
 const vap=[];const vapM3=new C.Matrix3(),vapTmp=new C.Cartesian3(),vapOff=new C.Cartesian3();   // filled once the smoke texture exists, below
+let boomKind=1;   // 1: the barrier, a vapor disc. 2: Mach 2, a condensation sheath streaming back from the nose in a cone
 function updateVapor(vis){
   const t=boomAge/1.7;if(t>=1||t<0){vap.forEach(v=>v.b.show=false);return;}
   C.Matrix3.fromQuaternion(worldQ,vapM3);
-  for(const v of vap){const tt=clamp(t*(1+v.j*0.35),0,1);const r=v.r0*(1+2.6*tt);vapOff.x=v.x0-tt*8;vapOff.y=v.y0+Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r*0.85;
-    C.Matrix3.multiplyByVector(vapM3,vapOff,vapTmp);C.Cartesian3.add(worldPos,vapTmp,vapTmp);v.b.position=vapTmp;const s=2.2+tt*7;v.b.width=s;v.b.height=s;v.b.color=new C.Color(1,1,1,Math.sin(Math.PI*Math.pow(tt,0.55))*0.75);v.b.show=vis;}
+  for(const v of vap){const tt=clamp(t*(1+v.j*0.35),0,1);let s;
+    if(boomKind===1){const r=v.r0*(1+2.6*tt);vapOff.x=v.x0-tt*8;vapOff.y=v.y0+Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r*0.85;s=2.2+tt*7;}
+    else{const along=7-v.j*22-tt*10;const r=0.4+(7-along)*0.32*(0.6+tt);vapOff.x=along;vapOff.y=Math.cos(v.a)*r;vapOff.z=Math.sin(v.a)*r;s=1.6+(7-along)*0.22+tt*3;}
+    C.Matrix3.multiplyByVector(vapM3,vapOff,vapTmp);C.Cartesian3.add(worldPos,vapTmp,vapTmp);v.b.position=vapTmp;v.b.width=s;v.b.height=s;v.b.color=new C.Color(1,1,1,Math.sin(Math.PI*Math.pow(tt,0.55))*(boomKind===1?0.75:0.6));v.b.show=vis;}
 }
 const RIPPLE_FS=`
 uniform sampler2D colorTexture;
@@ -544,8 +547,8 @@ function step(dt){
     if(!mnv){rollRate=2.6;pitchRate=1.3;if(agl<18&&fwd.z<0.05)pitchIn=up.z>=0?Math.max(pitchIn,0.8):Math.min(pitchIn,-0.8);}
   }
   const prevSpeed=speed;speed=G.stepSpeed(speed,throttle,fwd.z,dt,burner,burnerHeld);
-  if(G.boomCrossing(prevSpeed,speed)){speed+=G.BOOM_KICK;sonicBoom();}
-  else if(G.mach2Crossing(prevSpeed,speed)){boomSound();shake=0.3;$('splash').textContent='MACH 2';const sp=$('splash');sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');setTimeout(()=>{sp.textContent='MACH 1';},1500);}
+  if(G.boomCrossing(prevSpeed,speed)){speed+=G.BOOM_KICK;sonicBoom(1);}
+  else if(G.mach2Crossing(prevSpeed,speed))sonicBoom(2);
   rotBody(AX,rollIn*rollRate*agility*dt);
   rotBody(AY,-pitchIn*pitchRate*agility*dt);
   rotBody(AZ,yawIn*0.6*dt);
@@ -575,8 +578,8 @@ function step(dt){
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
 function crash(){crashed=1.3;$('flash').style.opacity=0.9;ping(120,0.8);toast('Splash. Back over Zilker.');smokeOn=false;}
-function sonicBoom(){boomSound();boomAge=0;shake=0.45;$('flash').style.opacity=0.25;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},60);
-  const sp=$('splash');sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');
+function sonicBoom(kind){boomKind=kind||1;boomSound();boomAge=0;shake=0.45;$('flash').style.opacity=0.25;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},60);
+  const sp=$('splash');sp.textContent=boomKind===2?'MACH 2':'MACH 1';sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');
   window.__lsfBooms=(window.__lsfBooms||0)+1;}
 
 // ---------- camera ----------
