@@ -26,8 +26,8 @@
   // ---- engine ----
   // Two-stage afterburner. Stage one is a nudge; hold it STAGE_T seconds and stage two opens the throttle for real.
   // MACH1 is the in-game sound barrier: only stage two can cross it, and crossing it upward is the sonic boom.
-  const VMAX = 340, STAGE_T = 2.5, MACH1 = 400, SOUND_MS = 340, BOOM_KICK = 35;
-  const BURNER = { boost1: 60, boost2: 300, ceiling1: 395, ceiling2: 720 };
+  const VMAX = 340, STAGE_T = 2.5, MACH1 = 400, MACH2 = 680, SOUND_MS = 340, BOOM_KICK = 35;
+  const BURNER = { boost1: 60, boost2: 370, ceiling1: 395, ceiling2: 760 };
   function burnerStage(burner, held) { return !burner ? 0 : held >= STAGE_T ? 2 : 1; }
   function targetSpeed(throttle, burner, held) { const s = burnerStage(burner, held || 0); return 55 + 275 * throttle + (s === 2 ? BURNER.boost2 : s === 1 ? BURNER.boost1 : 0); }
   function speedCeiling(burner, held) { const s = burnerStage(burner, held || 0); return s === 2 ? BURNER.ceiling2 : s === 1 ? BURNER.ceiling1 : VMAX; }
@@ -41,6 +41,7 @@
     return clamp(speed, 45, speedCeiling(burner, held));
   }
   function boomCrossing(prevSpeed, speed) { return prevSpeed < MACH1 && speed >= MACH1; }
+  function mach2Crossing(prevSpeed, speed) { return prevSpeed < MACH2 && speed >= MACH2; }
   function mach(speed) { return speed / SOUND_MS; }
 
   // ---- pilot assist ----
@@ -90,5 +91,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, STAGE_T, MACH1, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach, MARGIN, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
 });

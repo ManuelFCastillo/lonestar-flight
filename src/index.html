@@ -545,6 +545,7 @@ function step(dt){
   }
   const prevSpeed=speed;speed=G.stepSpeed(speed,throttle,fwd.z,dt,burner,burnerHeld);
   if(G.boomCrossing(prevSpeed,speed)){speed+=G.BOOM_KICK;sonicBoom();}
+  else if(G.mach2Crossing(prevSpeed,speed)){boomSound();shake=0.3;$('splash').textContent='MACH 2';const sp=$('splash');sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');setTimeout(()=>{sp.textContent='MACH 1';},1500);}
   rotBody(AX,rollIn*rollRate*agility*dt);
   rotBody(AY,-pitchIn*pitchRate*agility*dt);
   rotBody(AZ,yawIn*0.6*dt);

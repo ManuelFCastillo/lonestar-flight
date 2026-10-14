@@ -94,21 +94,21 @@ describe('engine', () => {
     assert.equal(G.burnerStage(true, 2.49), 1);
     assert.equal(G.burnerStage(true, 2.5), 2);
     assert.equal(G.targetSpeed(1, true, 0), 390);
-    assert.equal(G.targetSpeed(1, true, 3), 630);
+    assert.equal(G.targetSpeed(1, true, 3), 700);
     assert.equal(G.speedCeiling(true, 0), 395);
-    assert.equal(G.speedCeiling(true, 3), 720);
-    assert.equal(G.stepSpeed(720, 1, 0, 1, false, 0), 340);   // let go of the burner: back under the normal ceiling at once
+    assert.equal(G.speedCeiling(true, 3), 760);
+    assert.equal(G.stepSpeed(760, 1, 0, 1, false, 0), 340);   // let go of the burner: back under the normal ceiling at once
     let v = 300, peak = 0;
     for (let i = 0; i < 900; i++) { v = G.stepSpeed(v, 1, -1, 1 / 60, true, 3); peak = Math.max(peak, v); }   // 15 s in stage two, diving
-    assert.ok(peak <= 720, 'ceiling held, peak ' + peak);
+    assert.ok(peak <= 760, 'ceiling held, peak ' + peak);
     v = 300;
     for (let i = 0; i < 900; i++) v = G.stepSpeed(v, 1, 0, 1 / 60, true, 3);
-    assert.ok(Math.abs(v - 630) < 0.5, 'stage two settled at ' + v);
+    assert.ok(Math.abs(v - 700) < 0.5, 'stage two settled at ' + v);
   });
   test('past Mach 1 the jet accelerates about twice as hard', () => {
     const below = G.stepSpeed(380, 1, 0, 0.1, true, 3) - 380;
     const above = G.stepSpeed(420, 1, 0, 0.1, true, 3) - 420;
-    assert.ok(above / (630 - 420) > 1.8 * (below / (630 - 380)), 'supersonic pull ' + above + ' vs subsonic ' + below);
+    assert.ok(above / (700 - 420) > 1.8 * (below / (700 - 380)), 'supersonic pull ' + above + ' vs subsonic ' + below);
     assert.equal(G.BOOM_KICK, 35);
   });
   test('the sound barrier sits above stage one and the boom fires once, on the way up', () => {
@@ -117,6 +117,9 @@ describe('engine', () => {
     assert.equal(G.boomCrossing(399, 400), true);
     assert.equal(G.boomCrossing(400, 401), false);
     assert.equal(G.boomCrossing(401, 399), false);
+    assert.ok(G.targetSpeed(1, true, 3) > G.MACH2, 'Mach 2 must be reachable in level flight');
+    assert.equal(G.mach2Crossing(679, 680), true);
+    assert.equal(G.mach2Crossing(680, 700), false);
     assert.ok(Math.abs(G.mach(340) - 1) < 1e-9);
     assert.ok(Math.abs(G.mach(510) - 1.5) < 1e-9);
   });
