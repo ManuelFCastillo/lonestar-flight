@@ -153,7 +153,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
     <div class="keys">
       <div><kbd>↑</kbd><kbd>↓</kbd> pitch</div><div><kbd>←</kbd><kbd>→</kbd> bank and turn</div><div><kbd>Q</kbd><kbd>E</kbd> full roll</div>
       <div><kbd>A</kbd><kbd>D</kbd> rudder</div>
-      <div><kbd>W</kbd><kbd>S</kbd> throttle</div><div><kbd>Shift</kbd> afterburner, hold for Mach 1</div><div><kbd>Space</kbd> smoke</div>
+      <div><kbd>W</kbd><kbd>S</kbd> throttle</div><div><kbd>Shift</kbd> afterburner, hold for Mach 1</div><div><kbd>Space</kbd> smoke, hold for red white blue</div>
       <div><kbd>C</kbd> camera</div><div><kbd>X</kbd> pilot assist</div><div><kbd>R</kbd> reset</div>
       <div><kbd>P</kbd> pause</div><div><kbd>I</kbd> invert pitch</div><div><kbd>N</kbd> music</div>
       <div><kbd>M</kbd> sound</div><div><kbd>L</kbd> night / dusk</div><div><kbd>F</kbd> fullscreen</div>
@@ -448,7 +448,8 @@ for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({image:smokeImg,position:C.Cartes
 let smokeIdx=0;
 const vapCol=scene.primitives.add(new C.BillboardCollection());
 for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:vapCol.add({image:smokeImg,position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false}),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
-function emitSmoke(local,vel){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();}s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
+const TINT={white:[1,0.96,0.92],red:[0.92,0.16,0.12],blue:[0.14,0.32,0.86]};
+function emitSmoke(local,vel,tint){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.tint=tint||TINT.white;if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();}s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
 
 // bats: a stream leaving the bridge eastward along the river
 const batCol=scene.primitives.add(new C.PointPrimitiveCollection());
@@ -478,7 +479,7 @@ let anchorCursor=0;
 function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
 
 // ---------- state ----------
-const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0;
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false;
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
 const camPos=V(0,0,0);
 function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
@@ -488,7 +489,7 @@ spawn();toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
 const PREVENT=new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyS','KeyA','KeyD','KeyQ','KeyE']);
 window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e.target.type==='text')return;if(e.repeat&&PREVENT.has(e.code)){e.preventDefault();return;}K[e.code]=true;if(PREVENT.has(e.code))e.preventDefault();
   if(!playing){if(e.code==='Enter'&&!$('go').disabled)go();if(e.code==='KeyL')setNight(!nightOn,false);return;}
-  if(e.code==='Space')smokeOn=!smokeOn;
+  if(e.code==='Space')spaceDownAt=performance.now();   // tap toggles smoke (on keyup); hold for red, white and blue
   if(e.code==='KeyC'){cam=cam==='chase'?'cockpit':'chase';$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';}
   if(e.code==='KeyR')spawn();
   if(e.code==='KeyI')setInvert(!invert,true);
@@ -500,7 +501,7 @@ window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e
   if(e.code==='KeyF')fullscreen();
   if(e.code==='KeyP'||e.code==='Escape'){if($('done').classList.contains('on'))return;setPaused(!paused);}
 });
-window.addEventListener('keyup',e=>{K[e.code]=false;});
+window.addEventListener('keyup',e=>{K[e.code]=false;if(e.code==='Space'&&playing&&performance.now()-spaceDownAt<450)smokeOn=!smokeOn;});
 window.addEventListener('blur',()=>{for(const k in K)K[k]=false;});
 
 // ---------- audio ----------
@@ -618,7 +619,10 @@ function step(dt){
   if(assist){ // hard floor on the terrain only; a building you fail to dodge is passed through, not climbed over
     if(floorH!==undefined&&pos.z<floorH+8)pos.z=floorH+8;
   }else if(agl<4){crash();return;}
-  if(smokeOn){const tail=V(pos.x-fwd.x*8-up.x*0.3,pos.y-fwd.y*8-up.y*0.3,pos.z-fwd.z*8-up.z*0.3);const n=Math.max(1,Math.round(speed*dt/2.2));for(let i=0;i<n;i++){emitSmoke(V(tail.x-fwd.x*i*2.2,tail.y-fwd.y*i*2.2,tail.z-fwd.z*i*2.2));}}
+  spaceHeld=K.Space?spaceHeld+dt:0;tricolor=spaceHeld>=0.45;
+  if(smokeOn||tricolor){const n=Math.max(1,Math.round(speed*dt/2.2));
+    const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*2.2,sy-fwd.y*i*2.2,sz-fwd.z*i*2.2),null,tint);};
+    if(tricolor){stream(6.6,0,TINT.red);stream(0,-0.3,TINT.white);stream(-6.6,0,TINT.blue);}else stream(0,-0.3,TINT.white);}
   if(mode==='tour'&&!finished){elapsed+=dt;const g=GATES[gate];g.ent.show=true;g.ent.polyline.material=RING;if(GATES[gate+1]){GATES[gate+1].ent.show=true;GATES[gate+1].ent.polyline.material=RING_DIM;}
     const d=C.Cartesian3.distance(pos,g.local);if(G.gateHit(d,g.r)){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
       if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
@@ -656,7 +660,7 @@ scene.preUpdate.addEventListener(()=>{
   if(playing&&!paused){step(dt);T+=dt;}
   toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
   updateBats(T+40);
-  for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;s.b.color=new C.Color(1,0.96,0.92,0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
+  for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;const tn=s.tint||TINT.white;s.b.color=new C.Color(tn[0],tn[1],tn[2],0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
   const stage=G.burnerStage(burner,burnerHeld);
   if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(stage===2?0.22:stage===1?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(stage?900:0)+(stage===2?600:0);whine.frequency.value=80+throttle*150+(stage?90:0)+(stage===2?60:0);}
   flame.show=playing&&!paused&&burner&&cam!=='cockpit';
@@ -665,7 +669,7 @@ scene.preUpdate.addEventListener(()=>{
     updateCamera(dt);window.__lsfClimb=fwd.z;   // test probe
     $('spd').textContent=Math.round(speed*G.KT_PER_MS);$('spdU').textContent=speed>=G.MACH1*0.98?'kt · M '+G.mach(speed).toFixed(2):'kt';$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*G.FT_PER_M);
     const hdg=G.headingDeg(fwd.x,fwd.y);$('hdg').textContent=G.fmtHeading(hdg);
-    $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn);$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
+    $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn||tricolor);$('pSmoke').textContent=tricolor?'Red white blue':'Smoke';$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
     if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
     diagFrames++;diagT+=realDt;if(diagT>=1){const fps=diagFrames/diagT;
