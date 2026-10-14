@@ -2,7 +2,7 @@
 // as a player sees it (chase camera, HUD, gates, toasts): Barton Springs, a low red-white-blue bat run under the Congress
 // Avenue bridge, the Capitol, the UT Tower, then afterburner through Mach 1 and Mach 2 out to a smoke-on victory roll
 // through the Mount Bonnell gate. The game then replays the same flight and three short cut-aways are taken from other
-// cameras (ground camera at the bridge, orbit at Mach 2, abeam for the roll); the quiet middle of the hill-country approach
+// cameras (a camera on the bridge as the jet comes through the bats, orbit at Mach 2, abeam for the roll); the quiet middle of the hill-country approach
 // is jump-cut. ffmpeg assembles the cut and lays the soundtrack under it from its loud section.
 //   node scripts/promo-video.mjs [--url U] [--music-at SECONDS]     → promo/lonestar-flight.mp4
 // Timings are wall-clock: the headed browser runs real time, and the replay runs at the same rate as the flight.
@@ -50,7 +50,7 @@ await page.keyboard.up('Space');
 await sleep(1200);
 const flightLen = at();
 // the same flight again, from the other cameras, for the cut-aways
-const cuts = [[marks.bridge - 3.5, marks.bridge + 1.5, 'ground'], [marks.mach2 + 0.3, marks.mach2 + 5.3, 'orbit'], [marks.bonnell - 1.2, marks.bonnell + 3.8, 'side']];
+const cuts = [[marks.bridge - 3.2, marks.bridge + 2.2, 'gate'], [marks.mach2 + 0.3, marks.mach2 + 5.3, 'orbit'], [marks.bonnell - 1.2, marks.bonnell + 3.8, 'side']];
 const skips = marks.bonnell - 7 - (marks.mach2 + 6.5) > 3 ? [[marks.mach2 + 6.5, marks.bonnell - 7]] : [];   // jump-cut the long straight run over the hills
 await page.addStyleTag({ content: '#toast{display:none!important}' });
 const tReplay = clock();
