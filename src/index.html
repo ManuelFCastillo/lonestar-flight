@@ -555,7 +555,7 @@ async function enableMotion(){
   return true;
 }
 if(TOUCH){
-  $('touch').classList.add('on');$('rotate').classList.add('want');
+  $('rotate').classList.add('want');
   const press=(id,on,off)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('act');on();});const up=e=>{el.classList.remove('act');off();};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);};
   press('tBurn',()=>{K.ShiftLeft=true;},()=>{K.ShiftLeft=false;});
   press('tSmoke',()=>{K.Space=true;spaceDownAt=performance.now();},()=>{K.Space=false;if(playing&&performance.now()-spaceDownAt<450)smokeOn=!smokeOn;});
@@ -613,13 +613,13 @@ $('optNight').addEventListener('change',e=>setNight(e.target.checked,false));
 setNight(pref('night',false),false);
 $('mTour').addEventListener('click',()=>setMode('tour'));$('mFree').addEventListener('click',()=>setMode('free'));
 function go(){initAudio();if(AC&&AC.state==='suspended')AC.resume();if(musicOn)music.play().catch(()=>{});
-  if(TOUCH){enableMotion().then(ok=>{gyro.beta0=null;toast(ok?'Tilt to fly. Hold level now.':'No motion access: drag the left side to fly');});touchThr=0.6;$('tThr').value=60;}$('start').classList.add('hidden');$('hud').classList.add('on');playing=true;paused=false;finished=false;gate=0;elapsed=0;spawn();smokeOn=false;
+  if(TOUCH){$('touch').classList.add('on');enableMotion().then(ok=>{gyro.beta0=null;toast(ok?'Tilt to fly. Hold level now.':'No motion access: drag the left side to fly');});touchThr=0.6;$('tThr').value=60;}$('start').classList.add('hidden');$('hud').classList.add('on');playing=true;paused=false;finished=false;gate=0;elapsed=0;spawn();smokeOn=false;
   $('gate').classList.toggle('free',mode!=='tour');$('clock').style.display=mode==='tour'?'':'none';GATES.forEach(g=>g.ent.show=false);LANDMARKS.forEach(l=>l.lab.show=true);
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();toast(mode==='tour'?'Gate 1: Barton Springs':'Free flight over Austin');}
 $('go').addEventListener('click',go);
 function setPaused(p){paused=p;$('pause').classList.toggle('on',p);}
 $('bResume').addEventListener('click',()=>setPaused(false));
-$('bMenu').addEventListener('click',()=>{setPaused(false);playing=false;music.pause();$('hud').classList.remove('on');$('start').classList.remove('hidden');LANDMARKS.forEach(l=>l.lab.show=false);});
+$('bMenu').addEventListener('click',()=>{setPaused(false);playing=false;music.pause();$('touch').classList.remove('on');$('hud').classList.remove('on');$('start').classList.remove('hidden');LANDMARKS.forEach(l=>l.lab.show=false);});
 $('bAgain').addEventListener('click',()=>{$('done').classList.remove('on');go();});
 $('bKeep').addEventListener('click',()=>{$('done').classList.remove('on');});
 let toastT=0;function toast(s){$('toast').textContent=s;$('toast').classList.add('on');toastT=2.4;}
