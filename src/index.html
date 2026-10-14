@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Lone Star Flight · Austin</title>
 <meta name="description" content="Fly a jet over the real Austin at dusk. Keyboard only.">
 <meta property="og:type" content="website">
@@ -24,7 +24,23 @@
 :root{--bg:#121a2b;--fg:#f4eee2;--muted:#b9b1a3;--accent:#e2702a;--gold:#f2c230;--panel:rgba(14,19,32,.82);--line:rgba(244,238,226,.16);--ok:#8bd69b;--display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;--body:'Public Sans',system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
-#cesiumContainer{position:fixed;inset:0;outline:none}
+#cesiumContainer{position:fixed;inset:0;outline:none;touch-action:none;-webkit-user-select:none;user-select:none}
+/* touch layer: only on coarse pointers */
+#touch{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}
+#touch.on{display:block}
+.tc{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;pointer-events:auto}
+.tc.left{left:calc(14px + env(safe-area-inset-left,0px));flex-direction:column;align-items:center}
+.tc.right{right:calc(14px + env(safe-area-inset-right,0px));flex-wrap:wrap;justify-content:flex-end;max-width:46vw}
+.tb{min-width:72px;min-height:52px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.08em;touch-action:none;-webkit-user-select:none;user-select:none}
+.tb.on{color:var(--gold);border-color:var(--gold)}
+.tb.act{background:var(--gold);color:#1a1405}
+#tThr{writing-mode:vertical-lr;direction:rtl;height:150px;width:44px;accent-color:var(--gold);touch-action:none}
+.tc.left span{font-size:10px;letter-spacing:.2em;color:var(--muted)}
+#stick{position:absolute;width:120px;height:120px;border-radius:50%;border:1px solid var(--line);background:rgba(14,19,32,.35);pointer-events:none;transform:translate(-50%,-50%)}
+#stickKnob{position:absolute;left:50%;top:50%;width:44px;height:44px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);opacity:.85}
+#rotate{position:fixed;inset:0;z-index:12;display:none;place-items:center;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:28px;letter-spacing:.08em;text-align:center;padding:24px}
+@media (pointer:coarse) and (orientation:portrait){#rotate.want{display:grid}}
+@media (pointer:coarse){.keys{display:none}.ro.left{bottom:calc(190px + env(safe-area-inset-bottom,0px))}.ro.right{display:none}#tools{top:calc(14px + env(safe-area-inset-top,0px))}}
 .cesium-widget-credits{position:fixed!important;left:50%!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%);font-size:10px;color:var(--muted);z-index:4;background:rgba(14,19,32,.55);padding:2px 8px;border-radius:3px}
 .cesium-credit-logoContainer img{height:16px}
 .cesium-widget-credits a{color:var(--fg)}
@@ -168,7 +184,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
     <div id="tokenbox">No Cesium ion token is configured for this build. Paste one from <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com</a> to stream the city; it stays in this browser only.
       <input id="tokenIn" type="text" placeholder="eyJhbGciOi…" autocomplete="off" spellcheck="false" aria-label="Cesium ion access token"><button id="tokenGo">Use token</button></div>
     <p class="note" id="status">Google Photorealistic 3D Tiles via Cesium ion. Buildings keep loading as you fly.</p>
-    <p class="note" id="touchnote">This needs a keyboard. Open it on a laptop or desktop to fly.</p>
+    <p class="note" id="touchnote">On a phone: turn it sideways, tap Take off and allow motion. Tilt to bank and pull, slider for throttle, buttons for the rest. Recenter if the level feels off.</p>
   </div>
 </section>
 
@@ -195,6 +211,16 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <div id="splash" aria-hidden="true">MACH 1</div>
 </div>
 <div id="flash"></div>
+<div id="touch" aria-label="Touch controls">
+  <div class="tc left"><input type="range" id="tThr" min="0" max="100" value="60" aria-label="Throttle"><span>THROTTLE</span></div>
+  <div class="tc right">
+    <button class="tb" id="tBurn">BURNER</button><button class="tb" id="tSmoke">SMOKE</button>
+    <button class="tb on" id="tAssist">ASSIST</button><button class="tb" id="tCam">CAM</button>
+    <button class="tb" id="tCenter">RECENTER</button><button class="tb" id="tPause">PAUSE</button>
+  </div>
+  <div id="stick" hidden><div id="stickKnob"></div></div>
+</div>
+<div id="rotate">Turn your phone sideways<br><small style="font:14px var(--body);color:var(--muted);letter-spacing:0">then tilt to fly</small></div>
 
 <div class="modal" id="pause"><div class="card">
   <h2>Paused</h2>
@@ -265,7 +291,8 @@ const SPAWN=anchor({lat:30.2669,lon:-97.7760,msl:150,agl:330});
 C.Ion.defaultAccessToken=TOKEN;
 C.RequestScheduler.maximumRequestsPerServer=18;
 let tileFails=0;
-const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:4,scene3DOnly:true});
+const TOUCH=matchMedia('(pointer:coarse)').matches,MOBILE=TOUCH||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:MOBILE?1:4,scene3DOnly:true});
 const scene=viewer.scene;
 scene.screenSpaceCameraController.enableInputs=false;
 scene.skyAtmosphere.hueShift=-0.06;scene.skyAtmosphere.saturationShift=0.1;scene.skyAtmosphere.brightnessShift=-0.1;
@@ -364,8 +391,9 @@ async function loadCity(){
     tileset.progressiveResolutionHeightFraction=0;   // default 0.3 loads a low-res pass first and then re-pops to full: one pop, not two
     // Measured: at a 1 GB cap Cesium evicted 380 tiles in 16 s of low flight and ran 23 fps; at 3 GB it evicted none and ran 33 fps.
     // Eviction at the cap is what makes tiles just outside the frame swap between sharp and blurry as you turn.
-    const bigMachine=(navigator.deviceMemory||8)>=8;
-    tileset.cacheBytes=(bigMachine?2560:1024)*1024*1024;tileset.maximumCacheOverflowBytes=(bigMachine?1024:512)*1024*1024;
+    const bigMachine=!MOBILE&&(navigator.deviceMemory||8)>=8;
+    tileset.cacheBytes=(bigMachine?2560:MOBILE?512:1024)*1024*1024;tileset.maximumCacheOverflowBytes=(bigMachine?1024:MOBILE?256:512)*1024*1024;
+    if(MOBILE)tileset.maximumScreenSpaceError=20;
     tileset.preloadWhenHidden=false;
     scene.primitives.add(tileset);
     tileset.initialTilesLoaded.addEventListener(()=>{tilesReady=true;enableGo();});
@@ -508,6 +536,42 @@ window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e
 window.addEventListener('keyup',e=>{K[e.code]=false;if(e.code==='Space'&&playing&&performance.now()-spaceDownAt<450)smokeOn=!smokeOn;});
 window.addEventListener('blur',()=>{for(const k in K)K[k]=false;});
 
+// ---------- touch: tilt steering, drag-stick fallback, big buttons ----------
+let touchThr=null;
+const gyro={on:false,beta:0,gamma:0,beta0:null,gamma0:null,have:false};
+const stick={id:null,x0:0,y0:0,dx:0,dy:0};
+function orientationAngle(){return (screen.orientation&&typeof screen.orientation.angle==='number')?screen.orientation.angle:(window.orientation||0);}
+function gyroCenter(){gyro.beta0=gyro.beta;gyro.gamma0=gyro.gamma;}
+function touchInputs(){
+  if(gyro.on&&gyro.have){if(gyro.beta0===null)gyroCenter();const a=orientationAngle();const db=gyro.beta-gyro.beta0,dg=gyro.gamma-gyro.gamma0;
+    let roll,pitch;if(a===90){roll=db;pitch=dg;}else if(a===270||a===-90){roll=-db;pitch=-dg;}else{roll=dg;pitch=db;}   // landscape mixes the axes
+    const dz=v=>Math.abs(v)<3?0:v-Math.sign(v)*3;return {turn:clamp(dz(roll)/22,-1,1),pitch:clamp(dz(pitch)/18,-1,1)};}
+  if(stick.id!==null)return {turn:clamp(stick.dx/60,-1,1),pitch:clamp(-stick.dy/60,-1,1)};
+  return {turn:0,pitch:0};
+}
+async function enableMotion(){
+  try{if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function'){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')return false;}}catch(e){return false;}
+  if(!gyro.on){gyro.on=true;window.addEventListener('deviceorientation',e=>{if(e.beta===null||e.gamma===null)return;gyro.beta=e.beta;gyro.gamma=e.gamma;gyro.have=true;},true);}
+  return true;
+}
+if(TOUCH){
+  $('touch').classList.add('on');$('rotate').classList.add('want');
+  const press=(id,on,off)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('act');on();});const up=e=>{el.classList.remove('act');off();};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);};
+  press('tBurn',()=>{K.ShiftLeft=true;},()=>{K.ShiftLeft=false;});
+  press('tSmoke',()=>{K.Space=true;spaceDownAt=performance.now();},()=>{K.Space=false;if(playing&&performance.now()-spaceDownAt<450)smokeOn=!smokeOn;});
+  $('tAssist').addEventListener('click',()=>{setAssist(!assist,true);$('tAssist').classList.toggle('on',assist);});
+  $('tCam').addEventListener('click',()=>{cam=cam==='chase'?'cockpit':'chase';$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';});
+  $('tCenter').addEventListener('click',()=>{gyroCenter();toast('Level reset');});
+  $('tPause').addEventListener('click',()=>{if(playing)setPaused(!paused);});
+  $('tThr').addEventListener('input',e=>{touchThr=e.target.value/100;});
+  // drag stick on the left half of the screen when there is no gyroscope
+  const cont=$('cesiumContainer');
+  cont.addEventListener('pointerdown',e=>{if(!playing||(gyro.on&&gyro.have)||stick.id!==null||e.clientX>innerWidth*0.5)return;stick.id=e.pointerId;stick.x0=e.clientX;stick.y0=e.clientY;stick.dx=0;stick.dy=0;const s=$('stick');s.hidden=false;s.style.left=e.clientX+'px';s.style.top=e.clientY+'px';});
+  cont.addEventListener('pointermove',e=>{if(e.pointerId!==stick.id)return;stick.dx=clamp(e.clientX-stick.x0,-60,60);stick.dy=clamp(e.clientY-stick.y0,-60,60);$('stickKnob').style.transform='translate(calc(-50% + '+stick.dx+'px), calc(-50% + '+stick.dy+'px))';});
+  const stickUp=e=>{if(e.pointerId!==stick.id)return;stick.id=null;stick.dx=0;stick.dy=0;$('stick').hidden=true;$('stickKnob').style.transform='translate(-50%,-50%)';};
+  cont.addEventListener('pointerup',stickUp);cont.addEventListener('pointercancel',stickUp);
+}
+
 // ---------- audio ----------
 let AC,engGain,engFilter,whine;
 function initAudio(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();const buf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const d=buf.getChannelData(0);let last=0;for(let i=0;i<d.length;i++){const w=Math.random()*2-1;last=(last+0.02*w)/1.02;d[i]=last*3.5;}const src=AC.createBufferSource();src.buffer=buf;src.loop=true;engFilter=AC.createBiquadFilter();engFilter.type='lowpass';engFilter.frequency.value=300;engGain=AC.createGain();engGain.gain.value=0;src.connect(engFilter);engFilter.connect(engGain);engGain.connect(AC.destination);src.start();whine=AC.createOscillator();whine.type='sawtooth';whine.frequency.value=90;const wg=AC.createGain();wg.gain.value=0.05;const wf=AC.createBiquadFilter();wf.type='lowpass';wf.frequency.value=500;whine.connect(wf);wf.connect(wg);wg.connect(engGain);whine.start();}catch(e){AC=null;}}
@@ -534,7 +598,7 @@ function setMode(m){mode=m;$('mTour').setAttribute('aria-pressed',String(m==='to
 setMode('tour');
 const pref=(k,d)=>{try{return G.parsePref(localStorage.getItem(k),d);}catch(e){return d;}};
 const savePref=(k,v)=>{try{localStorage.setItem(k,v?'1':'0');}catch(e){}};
-function setAssist(on,say){assist=on;$('pAssist').classList.toggle('on',on);$('optAssist').checked=on;savePref('assist',on);if(say)toast(on?'Pilot assist on':'Pilot assist off. Good luck.');}
+function setAssist(on,say){assist=on;$('pAssist').classList.toggle('on',on);$('optAssist').checked=on;$('tAssist').classList.toggle('on',on);savePref('assist',on);if(say)toast(on?'Pilot assist on':'Pilot assist off. Good luck.');}
 function setInvert(on,say){invert=on;$('pInv').classList.toggle('on',on);$('optInvert').checked=on;savePref('invert',on);if(say)toast(on?'Pitch inverted: push forward to dive':'Pitch normal');}
 $('optAssist').addEventListener('change',e=>setAssist(e.target.checked,false));
 $('optInvert').addEventListener('change',e=>setInvert(e.target.checked,false));
@@ -548,7 +612,8 @@ $('bNight').addEventListener('click',()=>setNight(!nightOn,false));
 $('optNight').addEventListener('change',e=>setNight(e.target.checked,false));
 setNight(pref('night',false),false);
 $('mTour').addEventListener('click',()=>setMode('tour'));$('mFree').addEventListener('click',()=>setMode('free'));
-function go(){initAudio();if(AC&&AC.state==='suspended')AC.resume();if(musicOn)music.play().catch(()=>{});$('start').classList.add('hidden');$('hud').classList.add('on');playing=true;paused=false;finished=false;gate=0;elapsed=0;spawn();smokeOn=false;
+function go(){initAudio();if(AC&&AC.state==='suspended')AC.resume();if(musicOn)music.play().catch(()=>{});
+  if(TOUCH){enableMotion().then(ok=>{gyro.beta0=null;toast(ok?'Tilt to fly. Hold level now.':'No motion access: drag the left side to fly');});touchThr=0.6;$('tThr').value=60;}$('start').classList.add('hidden');$('hud').classList.add('on');playing=true;paused=false;finished=false;gate=0;elapsed=0;spawn();smokeOn=false;
   $('gate').classList.toggle('free',mode!=='tour');$('clock').style.display=mode==='tour'?'':'none';GATES.forEach(g=>g.ent.show=false);LANDMARKS.forEach(l=>l.lab.show=true);
   if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();toast(mode==='tour'?'Gate 1: Barton Springs':'Free flight over Austin');}
 $('go').addEventListener('click',go);
@@ -581,16 +646,18 @@ function startMnv(type,dir,say){mnv={type,t:0,dir:dir||1};if(say)toast(say);}
 function endMnv(){mnv=null;mnvCool=0.4;}
 function step(dt){
   if(crashed>0){crashed-=dt;if(crashed<=0){spawn();$('flash').style.opacity=0;}return;}
-  let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);if(invert)pitchIn=-pitchIn;
+  let pitchIn=(K.ArrowUp?1:0)-(K.ArrowDown?1:0);let turnIn=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);
+  if(TOUCH&&!pitchIn&&!turnIn){const t=touchInputs();pitchIn=t.pitch;turnIn=t.turn;}   // tilt or the drag stick, analog
+  if(invert)pitchIn=-pitchIn;
   let rollIn=0;const rawRoll=(K.KeyE?1:0)-(K.KeyQ?1:0);   // Q/E: full aerobatic roll; arrows: bank-to-turn
   const yawIn=(K.KeyA?1:0)-(K.KeyD?1:0);
-  throttle=G.stepThrottle(throttle,K.KeyW,K.KeyS,dt);burner=!!(K.ShiftLeft||K.ShiftRight);burnerHeld=burner?burnerHeld+dt:0;
+  throttle=G.stepThrottle(throttle,K.KeyW,K.KeyS,dt);if(TOUCH&&touchThr!==null){throttle=touchThr;}burner=!!(K.ShiftLeft||K.ShiftRight);burnerHeld=burner?burnerHeld+dt:0;
   body(AX,fwd);body(AY,left);body(AZ,up);
   // pilot assist: scripted airshow maneuvers take the stick when something is in the way
   const rightZ=-left.z;                                  // right wing up means banked left
   { const bankL=Math.asin(clamp(rightZ,-1,1));
     if(rawRoll){rollIn=rawRoll;bankTarget=bankL;}
-    else{const bc=G.bankController(bankTarget,(K.ArrowRight?1:0)-(K.ArrowLeft?1:0),bankL,dt,-1);bankTarget=bc.target;rollIn=bc.rollIn;} }
+    else{const bc=G.bankController(bankTarget,turnIn,bankL,dt,-1);bankTarget=bc.target;rollIn=bc.rollIn;} }
   assistAct=0;let rollRate=2.3,pitchRate=1.25,free=false,agility=clamp(speed/180,0.55,1.15);
   if(assist){
     const p=assistProbe();mnvCool-=dt;const agl=groundH===undefined?999:pos.z-groundH;
@@ -678,7 +745,7 @@ scene.preUpdate.addEventListener(()=>{
     updateCamera(dt);window.__lsfClimb=fwd.z;   // test probe
     $('spd').textContent=Math.round(speed*G.KT_PER_MS);$('spdU').textContent=speed>=G.MACH1*0.98?'kt · M '+G.mach(speed).toFixed(2):'kt';$('alt').textContent=groundH===undefined?'—':Math.round(Math.max(0,pos.z-groundH)*G.FT_PER_M);
     const hdg=G.headingDeg(fwd.x,fwd.y);$('hdg').textContent=G.fmtHeading(hdg);
-    $('thr').style.width=(throttle*100)+'%';$('pSmoke').classList.toggle('on',smokeOn||tricolor);$('pSmoke').textContent=tricolor?'Red white blue':'Smoke';$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
+    $('thr').style.width=(throttle*100)+'%';if(TOUCH){$('tBurn').classList.toggle('on',burner);$('tSmoke').classList.toggle('on',smokeOn||tricolor);}$('pSmoke').classList.toggle('on',smokeOn||tricolor);$('pSmoke').textContent=tricolor?'Red white blue':'Smoke';$('pBurn').classList.toggle('on',burner);$('pAssist').classList.toggle('act',assist&&assistAct>0.15);$('clock').textContent=fmt(elapsed);
     if(mode==='tour'&&!finished){const g=GATES[gate];const dx=g.local.x-pos.x,dy=g.local.y-pos.y;const rel=G.relBearing(hdg,dx,dy);$('gate').querySelector('.arrow').style.transform='rotate('+rel+'deg)';$('gName').textContent=g.n;$('gIdx').textContent='Gate '+(gate+1)+' / '+GATES.length;$('gDist').textContent=G.fmtDist(Math.hypot(dx,dy));$('gVert').textContent=G.vertCue(g.local.z-pos.z);}
     if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').classList.remove('on');}
     $('pullup').hidden=!(lowWarn&&!paused);if(!paused)gpws(T);
