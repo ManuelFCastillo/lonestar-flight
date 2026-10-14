@@ -52,6 +52,13 @@ body.touch #pullup{top:22%}
 #stickKnob{position:absolute;left:50%;top:50%;width:44px;height:44px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);opacity:.85}
 #rotate{position:fixed;inset:0;z-index:12;display:none;place-items:center;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:28px;letter-spacing:.08em;text-align:center;padding:24px}
 @media (pointer:coarse) and (orientation:portrait){#rotate.want{display:grid}}
+/* iPhone Safari: the page is taller than the screen so a swipe collapses the browser bars; the game stays pinned */
+#swipe{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(18,26,43,.82);touch-action:pan-y;color:var(--fg);font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.08em;text-align:center}
+#swipe.on{display:grid}
+#swipe .hand{font-size:52px;line-height:1;margin-bottom:8px;animation:swipe 1.3s ease-in-out infinite}
+@keyframes swipe{0%{transform:translateY(26px);opacity:.2}55%{transform:translateY(-22px);opacity:1}100%{transform:translateY(-26px);opacity:0}}
+body.ios-swipe{overflow:auto;height:auto}
+body.ios-swipe #spacer{display:block;height:170vh}
 .cesium-widget-credits{position:fixed!important;left:50%!important;bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%);font-size:10px;color:var(--muted);z-index:4;background:rgba(14,19,32,.55);padding:2px 8px;border-radius:3px}
 .cesium-credit-logoContainer img{height:16px}
 .cesium-widget-credits a{color:var(--fg)}
@@ -253,6 +260,8 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <div id="stick" hidden><div id="stickKnob"></div></div>
 </div>
 <div id="rotate">Turn your phone sideways<br><small style="font:14px var(--body);color:var(--muted);letter-spacing:0">then tilt to fly</small></div>
+<div id="swipe"><div><div class="hand">☝</div>Swipe up for full screen</div></div>
+<div id="spacer" hidden></div>
 
 <div class="modal" id="pause"><div class="card">
   <h2>Paused</h2>
@@ -586,6 +595,12 @@ async function enableMotion(){
   if(!gyro.on){gyro.on=true;window.addEventListener('deviceorientation',e=>{if(e.beta===null||e.gamma===null)return;gyro.beta=e.beta;gyro.gamma=e.gamma;gyro.have=true;},true);}
   return true;
 }
+// iPhone in a browser: swipe-up to full screen. Safari hides its bars when the page scrolls; the game is fixed so it never moves.
+const IPHONE_BROWSER=/iPhone/.test(navigator.userAgent)&&navigator.standalone!==true&&!matchMedia('(display-mode: standalone)').matches;
+if(IPHONE_BROWSER){document.body.classList.add('ios-swipe');$('spacer').hidden=false;
+  const fullH=()=>Math.min(screen.width,screen.height);
+  const check=()=>{const landscape=innerWidth>innerHeight;$('swipe').classList.toggle('on',landscape&&innerHeight<fullH()-20);};
+  addEventListener('resize',check);addEventListener('scroll',check);addEventListener('orientationchange',()=>setTimeout(check,300));setInterval(check,700);check();}
 if(TOUCH){
   $('rotate').classList.add('want');document.body.classList.add('touch');
   const press=(id,on,off)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('act');on();});const up=e=>{el.classList.remove('act');off();};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);};
