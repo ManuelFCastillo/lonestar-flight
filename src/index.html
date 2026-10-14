@@ -86,11 +86,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 #tools button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:grid;place-items:center;font-size:13px;font-weight:600}
 #tools button[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
 #start{position:fixed;inset:0;z-index:10;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:24px;padding-block:80px 32px;padding-inline:clamp(16px,5vw,64px);background:linear-gradient(180deg,rgba(18,26,43,.55),rgba(18,26,43,.25) 50%,rgba(18,26,43,.75));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-/* touch start screen: a small panel in the bottom-left corner; the city stays the view */
-body.touch #start{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:0;padding:0 0 calc(12px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px));background:linear-gradient(180deg,rgba(18,26,43,.15),rgba(18,26,43,.0) 40%,rgba(18,26,43,.55))}
-body.touch #start .card{width:min(470px,calc(100vw - 24px));padding:10px 12px;background:rgba(14,19,32,.72)}
+/* touch start screen: a compact square on the right edge; the skyline keeps the rest of the screen */
+body.touch #start{display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:0;padding:calc(54px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) 12px;background:linear-gradient(90deg,rgba(18,26,43,0) 55%,rgba(18,26,43,.45))}
+body.touch #start .card{width:min(300px,46vw);padding:10px 12px;background:rgba(14,19,32,.74)}
 body.touch .card .step{margin-bottom:7px;font-size:9px}
-body.touch .modes{gap:6px;margin-bottom:7px}
+body.touch .modes{grid-template-columns:1fr;gap:6px;margin-bottom:7px}
 body.touch .mode{padding:6px 10px;gap:0}
 body.touch .mode .n{font-size:15px}
 body.touch .mode .tag{position:static;order:2;margin-left:auto;font-size:8px}
@@ -98,7 +98,7 @@ body.touch .mode{display:flex;align-items:center}
 body.touch .mode .d,body.touch .mode .glyph,body.touch .brief,body.touch .note,body.touch #touchnote,body.touch .hero{display:none}
 body.touch #go{padding:9px 12px;font-size:16px}
 body.touch #go span:last-child{font-size:15px}
-body.touch .opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+body.touch .opts{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
 body.touch .opt{margin:0;padding:5px 9px;border:1px solid var(--line);border-radius:999px;font-size:11px;gap:5px;align-items:center;line-height:1}
 body.touch .opt span{font-size:0}
 body.touch .opt b{font-size:11px;color:var(--fg)}
