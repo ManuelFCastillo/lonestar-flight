@@ -279,6 +279,7 @@ uniform sampler2D depthTexture;
 uniform float u_night;
 uniform mat3 u_enuInv;      // world -> local east, north, up
 uniform vec3 u_camLocal;    // camera position in that local frame, meters
+uniform vec3 u_jetEC;       // the jet in eye coordinates: nothing within 15 m of it gets windows or lights
 in vec2 v_textureCoordinates;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 void main(){
@@ -302,11 +303,11 @@ void main(){
   vec3 nEye=normalize(cross(dFdx(e),dFdy(e)));
   vec3 nl=normalize(u_enuInv*(czm_inverseViewRotation*nEye));
   vec3 pl=u_camLocal+u_enuInv*(czm_inverseViewRotation*e);
-  // the jet sits within ~35 m of the chase camera: shade it dim and steady, and keep the city lights off it
-  float jetMask=smoothstep(38.0,55.0,dist);
-  if(jetMask<=0.0){out_FragColor=vec4(c.rgb*vec3(0.40,0.42,0.50),1.0);return;}
+  // the jet: shade it dim and steady, and keep the city lights off it
+  float jetMask=smoothstep(13.0,19.0,length(e-u_jetEC));
+  if(jetMask<=0.0){out_FragColor=vec4(c.rgb*vec3(0.42,0.44,0.52),1.0);return;}
   // moonlit base: the photo, crushed and cooled
-  vec3 col=pow(c.rgb,vec3(1.6))*vec3(0.17,0.20,0.32);
+  vec3 col=pow(c.rgb,vec3(1.55))*vec3(0.22,0.25,0.38);
   // windows on walls, aligned to floors (3.4 m) and bays (3.0 m). Foliage has random normals: mask it by its color.
   float veg=step(c.g,max(c.r,c.b)*1.06);
   float wall=(1.0-smoothstep(0.15,0.5,abs(nl.z)))*veg;
@@ -328,15 +329,15 @@ void main(){
   vec2 lp=vec2(hash(gc+7.1),hash(gc+3.3));
   float mpp=fwidth(pl.x)+fwidth(pl.y);            // meters per pixel: a 2.6 m glow under a pixel wide would strobe
   float gl=ground*district*step(0.92,hash(gc))*exp(-length((gf-lp)*36.0)/2.6)*(1.0-smoothstep(0.9,2.6,mpp));
-  col+=(winCol*win*0.8+vec3(1.0,0.74,0.42)*gl*1.0)*jetMask;
+  col+=(winCol*win*1.0+vec3(1.0,0.74,0.42)*gl*1.1)*jetMask;
   // dark haze with distance, a breath of the crown on the far horizon
   float haze=1.0-exp(-dist/9000.0);
   col=mix(col,vec3(0.05,0.05,0.11),haze*0.6);
   col+=violet*band*haze*0.18;
   out_FragColor=vec4(col,1.0);
 }`;
-const enuInvM3=C.Matrix4.getMatrix3(enuInv,new C.Matrix3()),camLocalU=new C.Cartesian3();
-scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:NIGHT_FS,uniforms:{u_night:()=>nightOn?1.0:0.0,u_enuInv:()=>enuInvM3,u_camLocal:()=>C.Matrix4.multiplyByPoint(enuInv,scene.camera.positionWC,camLocalU)}}));
+const enuInvM3=C.Matrix4.getMatrix3(enuInv,new C.Matrix3()),camLocalU=new C.Cartesian3(),jetECU=new C.Cartesian3();
+scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:NIGHT_FS,uniforms:{u_night:()=>nightOn?1.0:0.0,u_enuInv:()=>enuInvM3,u_camLocal:()=>C.Matrix4.multiplyByPoint(enuInv,scene.camera.positionWC,camLocalU),u_jetEC:()=>C.Matrix4.multiplyByPoint(scene.camera.viewMatrix,worldPos,jetECU)}}));
 let tileset=null,tilesReady=false;
 async function loadCity(){
   if(window.__lsfFakeTiles){tilesReady=true;enableGo();return;}   // test hook: fly without streaming the city
