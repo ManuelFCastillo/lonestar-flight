@@ -36,18 +36,32 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);overf
 /* touch layer: only on coarse pointers */
 #touch{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}
 #touch.on{display:block}
-.tc{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));pointer-events:auto}
-.tc.left{left:calc(14px + env(safe-area-inset-left,0px));display:flex;flex-direction:column-reverse;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 8px}
-.tc.right{right:calc(14px + env(safe-area-inset-right,0px));display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.tb{min-width:96px;min-height:56px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;touch-action:none;-webkit-user-select:none;user-select:none}
+.tc{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom,0px));pointer-events:auto}
+.tc.left{left:calc(12px + env(safe-area-inset-left,0px));display:flex;flex-direction:column-reverse;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 6px}
+.tc.right{right:calc(12px + env(safe-area-inset-right,0px));display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tb{min-width:68px;min-height:40px;padding:0 10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:7px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;touch-action:none;-webkit-user-select:none;user-select:none}
 .tb.on{color:var(--gold);border-color:var(--gold)}
 .tb.act{background:var(--gold);color:#1a1405}
-#tThr{writing-mode:vertical-lr;direction:rtl;height:160px;width:40px;accent-color:var(--gold);touch-action:none;margin:0}
-.tc.left span{font-size:9px;letter-spacing:.2em;color:var(--muted);writing-mode:horizontal-tb}
-/* touch layout: keyed on a body class set by the same check that enables the touch controls */
+#tThr{writing-mode:vertical-lr;direction:rtl;height:118px;width:32px;accent-color:var(--gold);touch-action:none;margin:0}
+.tc.left span{font-size:8px;letter-spacing:.2em;color:var(--muted);writing-mode:horizontal-tb}
+/* touch layout: keyed on a body class set by the same check that enables the touch controls. Everything about a third smaller. */
 body.touch .ro.right,body.touch .keys{display:none}
-body.touch .ro.left{left:calc(92px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px))}
-body.touch #pullup{top:22%}
+body.touch .ro.left{left:calc(70px + env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));padding:7px 10px;gap:12px}
+body.touch .ro .v{font-size:19px}
+body.touch .ro .k{font-size:8px}
+body.touch #brand{padding:5px 10px 5px 8px;gap:8px}
+body.touch #brand .t{font-size:16px}
+body.touch #brand .s{font-size:8px;margin-top:2px}
+body.touch #brand .mark{width:22px;height:22px}
+body.touch #tools button{width:28px;height:28px;font-size:11px}
+body.touch #gate{top:calc(50px + env(safe-area-inset-top,0px));padding:5px 10px;gap:10px}
+body.touch #gate .n{font-size:15px}
+body.touch #gate .d{font-size:8px}
+body.touch #gate .arrow{width:18px;height:18px}
+body.touch #clock{top:calc(50px + env(safe-area-inset-top,0px));font-size:15px;padding:6px 9px}
+body.touch #toast{bottom:auto;top:30%;font-size:16px}
+body.touch #pullup{top:22%;font-size:24px}
+body.touch #splash{font-size:clamp(32px,6vw,56px)}
 #stick{position:absolute;width:120px;height:120px;border-radius:50%;border:1px solid var(--line);background:rgba(14,19,32,.35);pointer-events:none;transform:translate(-50%,-50%)}
 #stickKnob{position:absolute;left:50%;top:50%;width:44px;height:44px;border-radius:50%;background:var(--gold);transform:translate(-50%,-50%);opacity:.85}
 #rotate{position:fixed;inset:0;z-index:12;display:none;place-items:center;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:28px;letter-spacing:.08em;text-align:center;padding:24px}
