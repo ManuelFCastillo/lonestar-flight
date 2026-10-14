@@ -1,9 +1,9 @@
 // Records the social video. Headed Chromium (real GPU, real tiles), 1080p. The game's autopilot flies the landmark tour
 // as a player sees it (chase camera, HUD, gates, toasts): Barton Springs, a low red-white-blue bat run under the Congress
-// Avenue bridge, the Capitol, the UT Tower, then afterburner through Mach 1 and Mach 2 out to Mount Bonnell and a smoke
-// roll through the Pennybacker Bridge gate. The game then replays the same flight and three short cut-aways are taken from
-// other cameras (ground camera at the bridge, orbit at Mach 2, abeam at Pennybacker). ffmpeg assembles the cut and lays the
-// soundtrack under it from its loud section.
+// Avenue bridge, the Capitol, the UT Tower, then afterburner through Mach 1 and Mach 2 out to a smoke-on victory roll
+// through the Mount Bonnell gate. The game then replays the same flight and three short cut-aways are taken from other
+// cameras (ground camera at the bridge, orbit at Mach 2, abeam for the roll); the quiet middle of the hill-country approach
+// is jump-cut. ffmpeg assembles the cut and lays the soundtrack under it from its loud section.
 //   node scripts/promo-video.mjs [--url U] [--music-at SECONDS]     → promo/lonestar-flight.mp4
 // Timings are wall-clock: the headed browser runs real time, and the replay runs at the same rate as the flight.
 import { chromium } from '@playwright/test';
@@ -42,15 +42,16 @@ await page.locator('#spdU').filter({ hasText: 'M 1' }).waitFor({ timeout: 40_000
 await page.waitForFunction(() => parseFloat(document.getElementById('spd').textContent) > 1300, null, { timeout: 45_000 }); marks.mach2 = at();
 await page.waitForFunction(() => { const t = document.getElementById('gDist').textContent; const v = parseFloat(t); return (/km/.test(t) ? v * 1000 : v) < 2200; }, null, { timeout: 60_000 });
 await page.keyboard.up('Shift'); await page.keyboard.down('KeyS'); await sleep(2000); await page.keyboard.up('KeyS');
-await gateIs(5); marks.bonnell = at();                               // Mount Bonnell, then smoke for the Pennybacker gate
-await page.keyboard.down('Space');
-await gateIs(6); marks.penny = at();
-await sleep(3500);
+await page.waitForFunction(() => { const t = document.getElementById('gDist').textContent; const v = parseFloat(t); return (/km/.test(t) ? v * 1000 : v) < 900; }, null, { timeout: 60_000 });
+await page.keyboard.down('Space');                                   // smoke on for the Mount Bonnell gate and the victory roll behind it
+await gateIs(5); marks.bonnell = at();
+await sleep(4500);
 await page.keyboard.up('Space');
-await sleep(1500);
+await sleep(1200);
 const flightLen = at();
 // the same flight again, from the other cameras, for the cut-aways
-const cuts = [[marks.bridge - 3.5, marks.bridge + 1.5, 'ground'], [marks.mach2 + 0.3, marks.mach2 + 5.3, 'orbit'], [marks.penny - 2.5, marks.penny + 2.5, 'side']];
+const cuts = [[marks.bridge - 3.5, marks.bridge + 1.5, 'ground'], [marks.mach2 + 0.3, marks.mach2 + 5.3, 'orbit'], [marks.bonnell - 1.2, marks.bonnell + 3.8, 'side']];
+const skips = marks.bonnell - 7 - (marks.mach2 + 6.5) > 3 ? [[marks.mach2 + 6.5, marks.bonnell - 7]] : [];   // jump-cut the long straight run over the hills
 await page.addStyleTag({ content: '#toast{display:none!important}' });
 const tReplay = clock();
 if (!await page.evaluate(() => window.__lsf.startReplay(null, { cams: ['chase'], per: 1e9 }))) throw new Error('nothing recorded to replay');
@@ -64,8 +65,9 @@ await ctx.close();
 const raw = await page.video().path();
 await browser.close();
 // assemble: live gameplay with the cut-aways spliced in at the same flight time
+const events = [...cuts.map(([a, b]) => [a, b, 'replay']), ...skips.map(([a, b]) => [a, b, 'skip'])].sort((x, y) => x[0] - y[0]);
 const segs = []; let cur = -LEAD;                                     // flight-relative seconds; negative covers the start screen
-for (const [a, b] of cuts) { segs.push([tFlight + cur, tFlight + a, 'live']); segs.push([tReplay + a, tReplay + b, 'replay']); cur = b; }
+for (const [a, b, kind] of events) { if (a > cur) segs.push([tFlight + cur, tFlight + a, 'live']); if (kind === 'replay') segs.push([tReplay + a, tReplay + b, 'replay']); cur = Math.max(cur, b); }
 segs.push([tFlight + cur, tFlight + flightLen, 'live']);
 const dur = segs.reduce((n, [a, b]) => n + (b - a), 0);
 const filter = segs.map(([a, b], i) => `[0:v]trim=start=${a.toFixed(3)}:end=${b.toFixed(3)},setpts=PTS-STARTPTS[v${i}]`).join(';') + ';' + segs.map((_, i) => `[v${i}]`).join('') + `concat=n=${segs.length}:v=1:a=0,fade=t=in:d=0.6,fade=t=out:st=${Math.max(0, dur - 1).toFixed(2)}:d=1[v]`;
