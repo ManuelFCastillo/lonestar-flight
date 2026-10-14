@@ -48,7 +48,8 @@ await page.keyboard.up('Shift'); await page.keyboard.down('KeyS'); await sleep(2
 await page.waitForFunction(() => { const t = document.getElementById('gDist').textContent; const v = parseFloat(t); return (/km/.test(t) ? v * 1000 : v) < 900; }, null, { timeout: 60_000 });
 await page.keyboard.down('Space');                                   // smoke on for the Mount Bonnell gate and the victory roll behind it
 await gateIs(5); marks.bonnell = at();
-await sleep(4500);
+await sleep(400); await hold('KeyE', 1800);                           // the roll through Mount Bonnell
+await sleep(2300);
 await page.keyboard.up('Space');
 await sleep(1200);
 const flightLen = at();

@@ -322,14 +322,14 @@ const ANCHORS=[];
 function anchor(o){o.local=toLocal(o.lon,o.lat,ell(o.msl));o.resolved=false;ANCHORS.push(o);return o;}
 
 const GATES=[
- {n:'Barton Springs',lat:30.2639,lon:-97.7713,msl:150,agl:150,r:28},
- {n:'Congress Avenue bridge, bat run',lat:30.2622,lon:-97.7453,msl:131,agl:28,r:16,low:true},
- {n:'Texas Capitol',lat:30.2747,lon:-97.7404,msl:165,agl:170,r:28},
- {n:'UT Tower',lat:30.2862,lon:-97.7394,msl:180,agl:190,r:28},
- {n:'Mount Bonnell',lat:30.3210,lon:-97.7733,msl:238,agl:90,r:30},
- {n:'Pennybacker Bridge',lat:30.3493,lon:-97.7968,msl:150,agl:95,r:30},
- {n:'Longhorn Dam',lat:30.2497,lon:-97.7142,msl:130,agl:110,r:30},
- {n:'Auditorium Shores finale',lat:30.2618,lon:-97.7505,msl:132,agl:110,r:30}
+ {n:'Barton Springs',lat:30.2639,lon:-97.7713,msl:150,agl:150,r:40},
+ {n:'Congress Avenue bridge, bat run',lat:30.2622,lon:-97.7453,msl:131,agl:30,r:20,low:true},
+ {n:'Texas Capitol',lat:30.2747,lon:-97.7404,msl:165,agl:170,r:40},
+ {n:'UT Tower',lat:30.2862,lon:-97.7394,msl:180,agl:190,r:40},
+ {n:'Mount Bonnell',lat:30.3210,lon:-97.7733,msl:238,agl:90,r:42},
+ {n:'Pennybacker Bridge',lat:30.3493,lon:-97.7968,msl:150,agl:95,r:42},
+ {n:'Longhorn Dam',lat:30.2497,lon:-97.7142,msl:130,agl:110,r:42},
+ {n:'Auditorium Shores finale',lat:30.2618,lon:-97.7505,msl:132,agl:110,r:42}
 ].map(anchor);
 const LANDMARKS=[
  ['Texas Capitol','1888 · sunset red granite',30.2747,-97.7404,165,110],['UT Tower','1937',30.2862,-97.7394,180,110],['Frost Bank Tower','the owl',30.2667,-97.7430,150,175],
@@ -576,8 +576,8 @@ function updateBats(t){for(let i=0;i<BATN;i++){const bt=bats[i],p=(t*0.03+i/BATN
 // gates as thick flat rings with a dark outline, twenty-sided: the 16-bit look
 const RING_EDGE=C.Color.fromCssColorString('#2b1a06');
 const RING=new C.PolylineOutlineMaterialProperty({color:GOLD,outlineColor:RING_EDGE,outlineWidth:5}),RING_DIM=new C.PolylineOutlineMaterialProperty({color:GOLD.withAlpha(0.4),outlineColor:RING_EDGE.withAlpha(0.4),outlineWidth:5});
-function ringPositions(g,i){const nx=GATES[i+1]||GATES[i-1];const dx=nx.local.x-g.local.x,dy=nx.local.y-g.local.y;const L=Math.hypot(dx,dy)||1;const ux=-dy/L,uy=dx/L;const pts=[];for(let k=0;k<=20;k++){const a=k/20*Math.PI*2;pts.push(toWorld(V(g.local.x+ux*Math.cos(a)*g.r,g.local.y+uy*Math.cos(a)*g.r,g.local.z+Math.sin(a)*g.r)));}return pts;}
-GATES.forEach((g,i)=>{g.ent=viewer.entities.add({show:false,polyline:{positions:ringPositions(g,i),width:18,material:RING}});});
+function ringPositions(g,i){let dx,dy;if(g.ax!==undefined){dx=g.ax;dy=g.ay;}else{const nx=GATES[i+1]||GATES[i-1];dx=nx.local.x-g.local.x;dy=nx.local.y-g.local.y;}const L=Math.hypot(dx,dy)||1;const ux=-dy/L,uy=dx/L;/* ring plane is normal to (dx,dy): the approach once the gate is active, else the line to the next gate */const pts=[];for(let k=0;k<=20;k++){const a=k/20*Math.PI*2;pts.push(toWorld(V(g.local.x+ux*Math.cos(a)*g.r,g.local.y+uy*Math.cos(a)*g.r,g.local.z+Math.sin(a)*g.r)));}return pts;}
+GATES.forEach((g,i)=>{g.ent=viewer.entities.add({show:false,polyline:{positions:ringPositions(g,i),width:20,material:RING}});});
 function rebuildRing(g){g.ent.polyline.positions=ringPositions(g,GATES.indexOf(g));}
 
 // labels
@@ -798,7 +798,9 @@ function step(dt){
   spaceHeld=K.Space?spaceHeld+dt:0;tricolor=spaceHeld>=0.45;
   trail(dt);
   if(mode==='tour'&&!finished){elapsed+=dt;const g=GATES[gate];g.ent.show=true;g.ent.polyline.material=RING;if(GATES[gate+1]){GATES[gate+1].ent.show=true;GATES[gate+1].ent.polyline.material=RING_DIM;}
-    const d=C.Cartesian3.distance(pos,g.local);if(G.gateHit(d,g.r)){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
+    { const gx=g.local.x-pos.x,gy=g.local.y-pos.y,gh=Math.hypot(gx,gy);   // the ring squares up to where you are coming from, settling as you close in, frozen inside 150 m
+      if(gh>150){const nx=gx/gh,ny=gy/gh;if(g.ax===undefined){g.ax=nx;g.ay=ny;}else{const k=1-Math.exp(-dt*1.5);g.ax+=(nx-g.ax)*k;g.ay+=(ny-g.ay)*k;const L=Math.hypot(g.ax,g.ay)||1;g.ax/=L;g.ay/=L;}g.ringT=(g.ringT||0)+dt;if(g.ringT>0.2){g.ringT=0;rebuildRing(g);}} }
+    const d=C.Cartesian3.distance(pos,g.local);if(G.gateHit(d,g.r)){g.ent.show=false;ping(880+gate*60,0.5);const finale=gate===GATES.length-1;gate++;if(assist&&!mnv&&finale)startMnv('vroll',1,'Victory roll');   // the roll is saved for the finale; one through every ring got distracting
       if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
