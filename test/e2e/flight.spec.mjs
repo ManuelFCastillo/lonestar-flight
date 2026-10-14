@@ -172,6 +172,12 @@ test('T replays the recorded flight from other cameras, then hands the stick bac
   await expect(flight.hud('pCam')).toHaveText('Chase');
 });
 
+test('the tour-complete card offers the replay, a rerun and free flight', async ({ page }) => {
+  await expect(page.locator('#done #bReplay')).toHaveText(/replay/i);          // attached, shown when the eighth gate is hit
+  await expect(page.locator('#done #bAgain')).toHaveText(/again/i);
+  await expect(page.locator('#done #bKeep')).toHaveText(/keep flying/i);
+});
+
 test('free flight hides the gate panel and the clock', async ({ page }) => {
   await page.locator('#mFree').click();
   await page.keyboard.press('Enter');

@@ -48,7 +48,7 @@ Turn the phone sideways, tap Take off and allow motion access. Tilt to bank and 
 
 ## Instant replay
 
-The game keeps the last three minutes of flight, one entry per frame: position, attitude, speed, throttle, smoke, burner and the sonic booms. T plays it back through the same effects code from cinematic cameras that cycle every seven seconds: a ground camera the jet flies past, an abeam view level with the horizon, the chase view, and an orbit; scripts can also park a camera just past the current gate (`gate`). T again, or R, hands the stick back where you left it. `window.__lsf.startReplay(frames, {cams, per})` and `setReplayCam(name)` drive it from scripts; `scripts/promo-video.mjs` uses that to record the social video from several angles.
+The game keeps the last three minutes of flight, one entry per frame: position, attitude, speed, throttle, smoke, burner and the sonic booms. T plays it back through the same effects code from cinematic cameras that cycle every seven seconds: a ground camera the jet flies past, an abeam view level with the horizon, the chase view, and an orbit; scripts can also park a camera just past the current gate (`gate`). T again, or R, hands the stick back where you left it. The tour-complete card has a Watch the replay button that plays the whole run and brings the card back when it ends. `window.__lsf.startReplay(frames, {cams, per})` and `setReplayCam(name)` drive it from scripts; `scripts/promo-video.mjs` uses that to record the social video from several angles.
 
 ## Night, music, afterburner
 

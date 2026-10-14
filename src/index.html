@@ -286,8 +286,8 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
   <h2>Tour complete</h2>
   <div class="time" id="doneTime">0:00</div>
   <ul class="gates" id="doneGates"></ul>
-  <p>Keep flying, or run it again for a better time.</p>
-  <div class="row"><button class="primary" id="bAgain">Fly it again</button><button id="bKeep">Keep flying</button></div>
+  <p>Watch the run back from the ground, abeam, chase and orbit cameras, keep flying, or run it again for a better time.</p>
+  <div class="row"><button class="primary" id="bReplay">Watch the replay</button><button id="bAgain">Fly it again</button><button id="bKeep">Keep flying</button></div>
 </div></div>
 
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.130/Build/Cesium/Cesium.js"></script>
@@ -719,6 +719,7 @@ $('bResume').addEventListener('click',()=>setPaused(false));
 $('bMenu').addEventListener('click',()=>{setPaused(false);playing=false;music.pause();$('touch').classList.remove('on');$('hud').classList.remove('on');$('start').classList.remove('hidden');LANDMARKS.forEach(l=>l.lab.show=false);});
 $('bAgain').addEventListener('click',()=>{$('done').classList.remove('on');go();});
 $('bKeep').addEventListener('click',()=>{$('done').classList.remove('on');});
+$('bReplay').addEventListener('click',()=>{$('done').classList.remove('on');if(!startReplay(null,{per:7,onEnd:()=>$('done').classList.add('on')}))$('done').classList.add('on');});   // the card comes back when the tape runs out or T ends it early
 let toastT=0;function toast(s){$('toast').textContent=s;$('toast').classList.add('on');toastT=2.4;}
 const fmt=G.fmtClock;
 
@@ -819,10 +820,10 @@ const REPLAY_CAMS=['ground','side','chase','orbit'];
 const qa=new C.Quaternion(),qb=new C.Quaternion();
 function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,boom:boomFlag,g:gate,e:elapsed});boomFlag=0;while(REC.length&&REC[0].t<T-180)REC.shift();}
 function startReplay(frames,opts){frames=frames||REC.slice();opts=opts||{};if(frames.length<2||frames[frames.length-1].t-frames[0].t<1){toast('Nothing to replay yet');return false;}
-  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,per:opts.per||7,anchor:null,orbA:0,
+  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,per:opts.per||7,anchor:null,orbA:0,onEnd:opts.onEnd,
     saved:{p:C.Cartesian3.clone(pos),q:C.Quaternion.clone(q),s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,cam,bankTarget,gate,elapsed}};
   mnv=null;lowWarn=false;boomAge=-1;$('pCam').textContent=replay.cams[0]==='chase'?'Chase':'Replay';toast('Instant replay');return true;}
-function endReplay(){if(!replay)return;const s=replay.saved;replay=null;C.Cartesian3.clone(s.p,pos);C.Quaternion.clone(s.q,q);speed=s.s;throttle=s.th;burner=s.b;smokeOn=s.sm;tricolor=s.tc;cam=s.cam;bankTarget=s.bankTarget;gate=s.gate;elapsed=s.elapsed;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);boomAge=-1;boomFlag=0;$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';toast('Live');}
+function endReplay(){if(!replay)return;const s=replay.saved,onEnd=replay.onEnd;replay=null;C.Cartesian3.clone(s.p,pos);C.Quaternion.clone(s.q,q);speed=s.s;throttle=s.th;burner=s.b;smokeOn=s.sm;tricolor=s.tc;cam=s.cam;bankTarget=s.bankTarget;gate=s.gate;elapsed=s.elapsed;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);boomAge=-1;boomFlag=0;$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';toast('Live');if(onEnd)onEnd();}
 function setReplayCam(name){if(!replay)return;const i=replay.cams.indexOf(name);if(i<0)replay.cams.push(name);replay.camI=i<0?replay.cams.length-1:i;replay.camT=0;replay.anchor=null;$('pCam').textContent=name==='chase'?'Chase':'Replay';}
 function replayStep(dt){const r=replay;r.t+=dt;const f=r.f;while(r.i<f.length-1&&f[r.i+1].t<=r.t)r.i++;if(r.i>=f.length-1){endReplay();return;}
   const a=f[r.i],b=f[r.i+1],u=clamp((r.t-a.t)/Math.max(1e-6,b.t-a.t),0,1);
