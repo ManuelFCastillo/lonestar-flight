@@ -36,6 +36,10 @@ GitHub Actions runs both on every push and pull request (`.github/workflows/test
 
 Arrows pitch, and bank into a turn (hold to tighten, release to level, 65° max) · Q/E full roll · A/D rudder · W/S throttle · Shift afterburner, hold for Mach 1 and Mach 2 · Space smoke · C camera · X pilot assist · R reset · P pause · I invert pitch · N music · L night / dusk · M sound · F fullscreen
 
+## On a phone
+
+Turn the phone sideways, tap Take off and allow motion access. Tilt to bank and pull (Recenter resets the level), a slider for throttle, buttons for burner, smoke, assist, camera and pause. If motion access is refused, drag on the left half of the screen as a stick. Phones get a smaller tile cache and a coarser detail target.
+
 ## Night, music, afterburner
 
 - **Night** is the default. Google's tiles are daytime photos, so night is a full-screen post-process: the city is darkened and cooled, bright surfaces read as lit windows, and the violet crown sits on the horizon with a purple haze on distant buildings. The moon button or L switches to dusk.
