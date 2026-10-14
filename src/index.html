@@ -548,15 +548,18 @@ function updateBoomFx(realDt){
 }
 
 // smoke: billboards sized in meters
-const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=g.createRadialGradient(32,32,2,32,32,30);r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.5,'rgba(255,255,255,.45)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c;})();
+// smoke sprite: a cluster of soft blobs rather than one radial gradient, so puffs read as cloud rather than as discs
+const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+  const blob=(x,y,r,a)=>{const gr=g.createRadialGradient(x,y,r*0.08,x,y,r);gr.addColorStop(0,'rgba(255,255,255,'+a+')');gr.addColorStop(0.45,'rgba(255,255,255,'+(a*0.55)+')');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);};
+  blob(64,64,56,0.9);blob(44,52,30,0.8);blob(84,50,26,0.75);blob(56,86,28,0.7);blob(86,82,24,0.65);blob(66,40,20,0.6);return c;})();
 const smokeCol=scene.primitives.add(new C.BillboardCollection());
-const SMOKEN=320,smoke=[];
-for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({image:smokeImg,position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,color:new C.Color(1,0.95,0.9,0),show:false});smoke.push({b,age:9,life:1,p:V(0,0,0),v:V(0,0,0)});}
+const SMOKEN=MOBILE?600:1500,smoke=[];   // three streams at 220 m/s put ~300 puffs a second into the air; the pool has to hold three seconds of that
+for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,rotation:Math.random()*6.283,color:new C.Color(1,0.95,0.9,0),show:false});b.setImage('puff',smokeImg);smoke.push({b,age:9,life:1,k:0.85+Math.random()*0.3,p:V(0,0,0),v:V(0,0,0)});}
 let smokeIdx=0;
 const vapCol=scene.primitives.add(new C.BillboardCollection());
-for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:vapCol.add({image:smokeImg,position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false}),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
-const TINT={white:[1,0.96,0.92],red:[0.92,0.16,0.12],blue:[0.14,0.32,0.86]};
-function emitSmoke(local,vel,tint){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.tint=tint||TINT.white;if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();}s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
+for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:(()=>{const vb=vapCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false});vb.setImage('puff',smokeImg);return vb;})(),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
+const TINT={white:[1,0.97,0.94],red:[0.96,0.14,0.10],blue:[0.12,0.32,0.96]};
+function emitSmoke(local,vel,tint){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.tint=tint||TINT.white;if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*1.2;s.v.y=(Math.random()-0.5)*1.2;s.v.z=0.5+Math.random()*0.7;}s.age=0;s.life=2.8+Math.random()*1.0;s.b.show=true;}   // calmer drift keeps the ribbon a ribbon
 
 // bats: the Congress Avenue emergence. Thousands of small, soft, dark shapes rather than a few crisp silhouettes: real bats
 // read as a flickering ribbon of specks, so the sprites are blurred, slightly irregular, randomly rotated, and flutter.
@@ -721,7 +724,7 @@ $('bResume').addEventListener('click',()=>setPaused(false));
 $('bMenu').addEventListener('click',()=>{setPaused(false);playing=false;music.pause();$('touch').classList.remove('on');$('hud').classList.remove('on');$('start').classList.remove('hidden');LANDMARKS.forEach(l=>l.lab.show=false);});
 $('bAgain').addEventListener('click',()=>{$('done').classList.remove('on');go();});
 $('bKeep').addEventListener('click',()=>{$('done').classList.remove('on');});
-$('bReplay').addEventListener('click',()=>{$('done').classList.remove('on');if(!startReplay(null,{per:7,onEnd:()=>$('done').classList.add('on')}))$('done').classList.add('on');});   // the card comes back when the tape runs out or T ends it early
+$('bReplay').addEventListener('click',()=>{$('done').classList.remove('on');if(!startReplay(null,{onEnd:()=>$('done').classList.add('on')}))$('done').classList.add('on');});   // the card comes back when the tape runs out or T ends it early
 let toastT=0;function toast(s){$('toast').textContent=s;$('toast').classList.add('on');toastT=2.4;}
 const fmt=G.fmtClock;
 
@@ -809,8 +812,8 @@ function step(dt){
       if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
-function trail(dt){if(!(smokeOn||tricolor))return;const n=Math.max(1,Math.round(speed*dt/2.2));
-  const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*2.2,sy-fwd.y*i*2.2,sz-fwd.z*i*2.2),null,tint);};
+function trail(dt){if(!(smokeOn||tricolor))return;const n=Math.max(1,Math.round(speed*dt/1.6));
+  const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*1.6,sy-fwd.y*i*1.6,sz-fwd.z*i*1.6),null,tint);};
   if(tricolor){stream(5.1,0,TINT.red);stream(0,-0.3,TINT.white);stream(-5.1,0,TINT.blue);}else stream(0,-0.3,TINT.white);}
 function crash(){crashed=1.3;$('flash').style.opacity=0.9;ping(120,0.8);toast('Splash. Back over Zilker.');smokeOn=false;}
 function sonicBoom(kind){boomKind=kind||1;boomFlag=boomKind;boomSound();boomAge=0;shake=0.45;$('flash').style.opacity=0.25;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},60);
@@ -820,11 +823,12 @@ function sonicBoom(kind){boomKind=kind||1;boomFlag=boomKind;boomSound();boomAge=
 // ---------- instant replay: the last minute of flight, played back from cinematic cameras ----------
 // Flight state is recorded per frame (position, attitude, speed, smoke, burner, booms) and played back through the same
 // effects code, so the smoke, plumes and vapor are re-created rather than stored. T starts it; it hands the stick back when the tape runs out.
-const REPLAY_CAMS=['ground','side','chase','orbit'];
+const REPLAY_CAMS=['chase','ground','chase','side','chase','orbit'];   // back to the chase between cut-aways, like a broadcast
+const REPLAY_DWELL={chase:9,ground:12,side:7,orbit:9};
 const qa=new C.Quaternion(),qb=new C.Quaternion();
 function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,boom:boomFlag,g:gate,e:elapsed});boomFlag=0;while(REC.length&&REC[0].t<T-180)REC.shift();}
 function startReplay(frames,opts){frames=frames||REC.slice();opts=opts||{};if(frames.length<2||frames[frames.length-1].t-frames[0].t<1){toast('Nothing to replay yet');return false;}
-  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,per:opts.per||7,anchor:null,orbA:0,onEnd:opts.onEnd,
+  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,passT:0,per:opts.per,anchor:null,orbA:0,onEnd:opts.onEnd,
     saved:{p:C.Cartesian3.clone(pos),q:C.Quaternion.clone(q),s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,cam,bankTarget,gate,elapsed}};
   mnv=null;lowWarn=false;boomAge=-1;$('pCam').textContent=replay.cams[0]==='chase'?'Chase':'Replay';toast('Instant replay');return true;}
 function endReplay(){if(!replay)return;const s=replay.saved,onEnd=replay.onEnd;replay=null;C.Cartesian3.clone(s.p,pos);C.Quaternion.clone(s.q,q);speed=s.s;throttle=s.th;burner=s.b;smokeOn=s.sm;tricolor=s.tc;cam=s.cam;bankTarget=s.bankTarget;gate=s.gate;elapsed=s.elapsed;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);boomAge=-1;boomFlag=0;$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';toast('Live');if(onEnd)onEnd();}
@@ -837,13 +841,14 @@ function replayStep(dt){const r=replay;r.t+=dt;const f=r.f;while(r.i<f.length-1&
   if(a.g!==undefined&&a.g!==gate){gate=a.g;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);}if(a.e!==undefined)elapsed=a.e;   // the HUD and the rings show the recorded moment
   if(a.boom&&r.lastBoomI!==r.i){r.lastBoomI=r.i;sonicBoom(a.boom);boomFlag=0;}
   body(AX,fwd);body(AY,left);body(AZ,up);trail(dt);
-  r.camT+=dt;if(r.camT>=r.per){r.camT=0;r.camI=(r.camI+1)%r.cams.length;r.anchor=null;$('pCam').textContent=r.cams[r.camI]==='chase'?'Chase':'Replay';}}
+  const cm=r.cams[r.camI];let dwell=r.per||REPLAY_DWELL[cm]||7;if(cm==='ground'&&r.anchor&&r.anchor.passed){r.passT+=dt;if(r.passT>1.2)dwell=0;}   // watch it go by for a beat, then cut
+  r.camT+=dt;if(r.camT>=dwell){r.camT=0;r.passT=0;r.camI=(r.camI+1)%r.cams.length;r.anchor=null;$('pCam').textContent=r.cams[r.camI]==='chase'?'Chase':'Replay';}}
 function replayCamera(dt){const r=replay,m=r.cams[r.camI];
-  if(m==='orbit'){r.orbA+=dt*0.3;const R=46+Math.sin(r.orbA*0.7)*10;camPos.x=pos.x+Math.cos(r.orbA)*R;camPos.y=pos.y+Math.sin(r.orbA)*R;camPos.z=pos.z+12;}
+  if(m==='orbit'){r.orbA+=dt*0.2;const R=46+Math.sin(r.orbA*0.7)*10;camPos.x=pos.x+Math.cos(r.orbA)*R;camPos.y=pos.y+Math.sin(r.orbA)*R;camPos.z=pos.z+12;}
   else if(m==='gate'){if(!r.anchor){const g=GATES[Math.min(gate,GATES.length-1)];r.anchor={x:g.local.x+fwd.x*140-left.x*110,y:g.local.y+fwd.y*140-left.y*110,z:g.local.z+24};}camPos.x=r.anchor.x;camPos.y=r.anchor.y;camPos.z=r.anchor.z;}
   else if(m==='side'){const hx=-fwd.y,hy=fwd.x,hl=Math.hypot(hx,hy)||1;camPos.x=pos.x+hx/hl*38-fwd.x*4;camPos.y=pos.y+hy/hl*38-fwd.y*4;camPos.z=pos.z+8;}   // abeam, level with the horizon
   else{ // ground: a fixed spot ahead and off to one side, re-placed once the jet has flown past it
-    if(!r.anchor||r.anchor.passed){const side=r.anchor?-r.anchor.side:1;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fwd.x*260+left.x*75*side,y:pos.y+fwd.y*260+left.y*75*side,z:Math.max(gz+16,pos.z-70),side,passed:false};}
+    if(!r.anchor||r.anchor.passed){const side=1;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fwd.x*260+left.x*75*side,y:pos.y+fwd.y*260+left.y*75*side,z:Math.max(gz+16,pos.z-70),side,passed:false};}
     const an=r.anchor,along=(pos.x-an.x)*fwd.x+(pos.y-an.y)*fwd.y;if(along>170||Math.hypot(pos.x-an.x,pos.y-an.y)>1400)an.passed=true;camPos.x=an.x;camPos.y=an.y;camPos.z=an.z;}
   if(groundH!==undefined&&camPos.z<groundH+4)camPos.z=groundH+4;
   toWorld(camPos,camDest);const d=V(pos.x-camPos.x,pos.y-camPos.y,pos.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);
@@ -877,7 +882,7 @@ scene.preUpdate.addEventListener(()=>{
   if(playing&&!paused){if(replay)replayStep(dt);else{step(dt);record();}T+=dt;}
   toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
   updateBats(T+40);
-  for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;const tn=s.tint||TINT.white;s.b.color=new C.Color(tn[0],tn[1],tn[2],0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
+  for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=(2.2+Math.sqrt(f)*16)*s.k;s.b.width=sc;s.b.height=sc;const tn=s.tint||TINT.white;const al=0.9*Math.pow(1-f,1.35);s.b.color=new C.Color(tn[0],tn[1],tn[2],al);/* swells fast then holds, dense near the jet, soft tail */s.b.position=toWorld(s.p,smokeTmp);}
   const stage=G.burnerStage(burner,burnerHeld);
   if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(stage===2?0.22:stage===1?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(stage?900:0)+(stage===2?600:0);whine.frequency.value=80+throttle*150+(stage?90:0)+(stage===2?60:0);}
   flame.show=playing&&!paused&&burner&&cam!=='cockpit';
