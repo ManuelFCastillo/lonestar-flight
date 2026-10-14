@@ -190,7 +190,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 </head>
 <body>
 <div id="cesiumContainer"></div>
-<audio id="music" src="austin-afterburner.m4a" loop preload="auto"></audio>
+<audio id="music" src="austin-afterburner.m4a" loop preload="metadata"></audio>
 
 <div id="brand">
   <svg class="mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M16 3l3 10 10 1-8 6 3 10-8-6-8 6 3-10-8-6 10-1z"/></svg>
@@ -348,10 +348,11 @@ const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||IPADOS;
 
 // ---------- viewer ----------
 C.Ion.defaultAccessToken=TOKEN;
-C.RequestScheduler.maximumRequestsPerServer=MOBILE?8:18;   // fewer in-flight downloads means fewer decode buffers: Safari kills tabs over memory
+C.RequestScheduler.maximumRequestsPerServer=MOBILE?6:18;   // fewer in-flight downloads means fewer decode buffers: Safari kills tabs over memory
 let tileFails=0;
 const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:MOBILE?1:4,scene3DOnly:true});
 const scene=viewer.scene;
+if(MOBILE)viewer.resolutionScale=0.75;   // framebuffers are the biggest fixed memory cost on a Retina tablet
 scene.screenSpaceCameraController.enableInputs=false;
 scene.skyAtmosphere.hueShift=-0.06;scene.skyAtmosphere.saturationShift=0.1;scene.skyAtmosphere.brightnessShift=-0.1;
 const DUSK_T=C.JulianDate.fromIso8601('2026-10-14T00:40:00Z'),NIGHT_T=C.JulianDate.fromIso8601('2026-10-14T04:30:00Z');   // 7:40 pm and 11:30 pm in Austin
@@ -427,7 +428,7 @@ void main(){
   out_FragColor=vec4(col,1.0);
 }`;
 const enuInvM3=C.Matrix4.getMatrix3(enuInv,new C.Matrix3()),camLocalU=new C.Cartesian3(),jetECU=new C.Cartesian3();
-scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:NIGHT_FS,uniforms:{u_night:()=>nightOn?1.0:0.0,u_enuInv:()=>enuInvM3,u_camLocal:()=>C.Matrix4.multiplyByPoint(enuInv,scene.camera.positionWC,camLocalU),u_jetEC:()=>C.Matrix4.multiplyByPoint(scene.camera.viewMatrix,worldPos,jetECU)}}));
+if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:NIGHT_FS,uniforms:{u_night:()=>nightOn?1.0:0.0,u_enuInv:()=>enuInvM3,u_camLocal:()=>C.Matrix4.multiplyByPoint(enuInv,scene.camera.positionWC,camLocalU),u_jetEC:()=>C.Matrix4.multiplyByPoint(scene.camera.viewMatrix,worldPos,jetECU)}}));   // post-process passes hold full-screen buffers: desktop only
 let tileset=null,tilesReady=false;
 async function loadCity(){
   if(window.__lsfFakeTiles){tilesReady=true;enableGo();return;}   // test hook: fly without streaming the city
@@ -450,8 +451,8 @@ async function loadCity(){
     // Measured: at a 1 GB cap Cesium evicted 380 tiles in 16 s of low flight and ran 23 fps; at 3 GB it evicted none and ran 33 fps.
     // Eviction at the cap is what makes tiles just outside the frame swap between sharp and blurry as you turn.
     const bigMachine=!MOBILE&&(navigator.deviceMemory||8)>=8;
-    tileset.cacheBytes=(bigMachine?2560:MOBILE?256:1024)*1024*1024;tileset.maximumCacheOverflowBytes=(bigMachine?1024:MOBILE?64:512)*1024*1024;   // Safari on an iPad restarts the tab past roughly a gigabyte in total
-    if(MOBILE)tileset.maximumScreenSpaceError=22;
+    tileset.cacheBytes=(bigMachine?2560:MOBILE?128:1024)*1024*1024;tileset.maximumCacheOverflowBytes=(bigMachine?1024:MOBILE?32:512)*1024*1024;   // Safari on an iPad restarts the tab past roughly a gigabyte in total
+    if(MOBILE)tileset.maximumScreenSpaceError=28;
     tileset.preloadWhenHidden=false;
     scene.primitives.add(tileset);
     tileset.initialTilesLoaded.addEventListener(()=>{tilesReady=true;enableGo();});
@@ -520,7 +521,7 @@ void main(){
   vec2 dir=d/max(r,1e-4);vec2 off=dir*ring*0.014*(1.0-u_t);
   out_FragColor=vec4(texture(colorTexture,uv-off).rgb,1.0);
 }`;
-scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
+if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
 function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());flame.modelMatrix=jet.modelMatrix;}
 function updateBoomFx(realDt){
   if(boomAge<0)return;
@@ -676,7 +677,7 @@ const music=$('music');music.volume=0.45;
 function setMusic(on,say){musicOn=on;$('bMusic').setAttribute('aria-pressed',String(on));savePref('music',on);if(on&&playing)music.play().catch(()=>{});else music.pause();if(say)toast(on?'Music on: Austin Afterburner':'Music off');}
 $('bMusic').addEventListener('click',()=>setMusic(!musicOn,false));
 setMusic(pref('music',true),false);
-function setNight(on,say){nightOn=on;viewer.clock.currentTime=on?NIGHT_T:DUSK_T;$('bNight').setAttribute('aria-pressed',String(on));$('optNight').checked=on;savePref('night',on);if(say)toast(on?'Night: the violet crown':'Dusk');}
+function setNight(on,say){if(MOBILE&&on){toast('Night mode needs a desktop GPU');on=false;}nightOn=on;viewer.clock.currentTime=on?NIGHT_T:DUSK_T;$('bNight').setAttribute('aria-pressed',String(on));$('optNight').checked=on;savePref('night',on);if(say)toast(on?'Night: the violet crown':'Dusk');}
 $('bNight').addEventListener('click',()=>setNight(!nightOn,false));
 $('optNight').addEventListener('change',e=>setNight(e.target.checked,false));
 setNight(pref('night',false),false);
@@ -821,7 +822,7 @@ scene.preUpdate.addEventListener(()=>{
     diagFrames++;diagT+=realDt;if(diagT>=1){const fps=diagFrames/diagT;
       // Detail is chosen once from the first six seconds of flight and then frozen: a detail target that keeps moving
       // re-decides every tile near the threshold each time it moves, which reads as LOD flicker across the whole city.
-      if(tileset&&!sseLocked){sseFps+=fps;sseSamples++;if(sseSamples>=6){const avg=sseFps/sseSamples;tileset.maximumScreenSpaceError=MOBILE?(avg>45?20:avg>28?24:30):(avg>50?12:avg>32?16:22);sseLocked=true;}}
+      if(tileset&&!sseLocked){sseFps+=fps;sseSamples++;if(sseSamples>=6){const avg=sseFps/sseSamples;tileset.maximumScreenSpaceError=MOBILE?(avg>45?24:avg>28?30:36):(avg>50?12:avg>32?16:22);sseLocked=true;}}
       if(!$('diag').hidden){const s=tileset?tileset.statistics:null,rs=C.RequestScheduler.statistics;$('diag').textContent=fps.toFixed(0)+' fps   detail '+(tileset?tileset.maximumScreenSpaceError.toFixed(0):'-')+' px'+(sseLocked?' (locked)':' (measuring)')+'\n'+(s?('tiles  selected '+s.selected+'  visited '+s.visited+'\nloaded '+s.numberOfTilesWithContentReady+'  pending '+s.numberOfPendingRequests+'  processing '+s.numberOfTilesProcessing+'\nrequests '+rs.numberOfAttemptedRequests+'  cancelled '+rs.numberOfCancelledRequests+'  failed '+rs.numberOfFailedRequests+'  tiles failed '+tileFails+'\nmemory '+(tileset.totalMemoryUsageInBytes/1048576).toFixed(0)+' MB of '+(tileset.cacheBytes/1048576).toFixed(0)):'no tileset')+'\nprobe '+(groundH===undefined?'none':'ok')+'  assist '+(mnv?mnv.type:'idle')+'  V hides this';}
       diagFrames=0;diagT=0;}
   }else{ // idle: slow orbit over downtown
