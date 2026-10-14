@@ -341,13 +341,15 @@ const LANDMARKS=[
 ].map(a=>anchor({n:a[0],s:a[1],lat:a[2],lon:a[3],msl:a[4],agl:a[5]}));
 const SPAWN=anchor({lat:30.2669,lon:-97.7760,msl:150,agl:330});
 
+// ---------- device ----------
+const TOUCH=matchMedia('(pointer:coarse)').matches,MOBILE=TOUCH||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+const IPADOS=/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1;   // iPadOS Safari calls itself a Mac
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||IPADOS;
+
 // ---------- viewer ----------
 C.Ion.defaultAccessToken=TOKEN;
 C.RequestScheduler.maximumRequestsPerServer=MOBILE?8:18;   // fewer in-flight downloads means fewer decode buffers: Safari kills tabs over memory
 let tileFails=0;
-const TOUCH=matchMedia('(pointer:coarse)').matches,MOBILE=TOUCH||/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-const IPADOS=/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1;   // iPadOS Safari calls itself a Mac
-const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||IPADOS;
 const viewer=new C.Viewer('cesiumContainer',{animation:false,timeline:false,baseLayerPicker:false,geocoder:false,homeButton:false,sceneModePicker:false,navigationHelpButton:false,fullscreenButton:false,infoBox:false,selectionIndicator:false,globe:false,skyAtmosphere:new C.SkyAtmosphere(),shouldAnimate:false,msaaSamples:MOBILE?1:4,scene3DOnly:true});
 const scene=viewer.scene;
 scene.screenSpaceCameraController.enableInputs=false;
