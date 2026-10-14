@@ -307,8 +307,9 @@ void main(){
   if(jetMask<=0.0){out_FragColor=vec4(c.rgb*vec3(0.40,0.42,0.50),1.0);return;}
   // moonlit base: the photo, crushed and cooled
   vec3 col=pow(c.rgb,vec3(1.6))*vec3(0.17,0.20,0.32);
-  // windows on walls, aligned to floors (3.4 m) and bays (3.0 m)
-  float wall=1.0-smoothstep(0.25,0.6,abs(nl.z));
+  // windows on walls, aligned to floors (3.4 m) and bays (3.0 m). Foliage has random normals: mask it by its color.
+  float veg=step(c.g,max(c.r,c.b)*1.06);
+  float wall=(1.0-smoothstep(0.15,0.5,abs(nl.z)))*veg;
   float along=abs(nl.y)>abs(nl.x)?pl.x:pl.y;
   vec2 wuv=vec2(along/3.0,pl.z/3.4);
   vec2 cell=floor(wuv),f=fract(wuv);
@@ -316,17 +317,18 @@ void main(){
   float on=hash(cell+bld*0.37);
   float inWin=step(0.22,f.x)*step(f.x,0.78)*step(0.3,f.y)*step(f.y,0.8);
   float aa=fwidth(wuv.x)+fwidth(wuv.y);
-  float grid=1.0-smoothstep(0.5,1.6,aa);         // too far to resolve a grid: fall back to an even glow
+  float grid=1.0-smoothstep(0.22,0.6,aa);        // under ~4 px per window the cells strobe: fade to a faint even glow instead
   float lit=step(0.78,on);                          // about a fifth of the windows are lit
-  float win=wall*(inWin*lit*grid+0.035*(1.0-grid));
+  float win=wall*(inWin*lit*grid+0.02*(1.0-grid));
   vec3 winCol=mix(vec3(1.0,0.80,0.50),vec3(0.80,0.88,1.0),step(0.5,hash(cell*1.7+bld)))*(0.75+0.5*hash(cell*2.3+bld));
   // sparse warm lights on the ground, clustered by district so parks and quiet blocks stay dark
   float ground=smoothstep(0.55,0.85,nl.z);
   float district=step(0.35,hash(floor(pl.xy/260.0)+0.5));
   vec2 gc=floor(pl.xy/36.0),gf=fract(pl.xy/36.0);
   vec2 lp=vec2(hash(gc+7.1),hash(gc+3.3));
-  float gl=ground*district*step(0.92,hash(gc))*exp(-length((gf-lp)*36.0)/2.6);
-  col+=(winCol*win*1.15+vec3(1.0,0.74,0.42)*gl*1.4)*jetMask;
+  float mpp=fwidth(pl.x)+fwidth(pl.y);            // meters per pixel: a 2.6 m glow under a pixel wide would strobe
+  float gl=ground*district*step(0.92,hash(gc))*exp(-length((gf-lp)*36.0)/2.6)*(1.0-smoothstep(0.9,2.6,mpp));
+  col+=(winCol*win*0.8+vec3(1.0,0.74,0.42)*gl*1.0)*jetMask;
   // dark haze with distance, a breath of the crown on the far horizon
   float haze=1.0-exp(-dist/9000.0);
   col=mix(col,vec3(0.05,0.05,0.11),haze*0.6);
