@@ -626,7 +626,7 @@ if(IPHONE_BROWSER){document.body.classList.add('ios-swipe');$('spacer').hidden=f
   addEventListener('resize',check);addEventListener('scroll',check);addEventListener('orientationchange',()=>setTimeout(check,300));setInterval(check,700);check();}
 if(TOUCH){
   $('rotate').classList.add('want');document.body.classList.add('touch');
-  const press=(id,on,off)=>{const el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('act');on();});const up=e=>{el.classList.remove('act');off();};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);};
+  const press=(id,on,off)=>{const el=$(id);let down=false;el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('act');down=true;on();});const up=e=>{if(!down)return;down=false;el.classList.remove('act');off();};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('lostpointercapture',up);};   // release runs once per press: pointerup and lostpointercapture both fire
   press('tBurn',()=>{K.ShiftLeft=true;},()=>{K.ShiftLeft=false;});
   press('tSmoke',()=>{K.Space=true;spaceDownAt=performance.now();},()=>{K.Space=false;if(playing&&performance.now()-spaceDownAt<450)smokeOn=!smokeOn;});
   $('tAssist').addEventListener('click',()=>{setAssist(!assist,true);$('tAssist').classList.toggle('on',assist);});
