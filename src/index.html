@@ -302,6 +302,9 @@ void main(){
   vec3 nEye=normalize(cross(dFdx(e),dFdy(e)));
   vec3 nl=normalize(u_enuInv*(czm_inverseViewRotation*nEye));
   vec3 pl=u_camLocal+u_enuInv*(czm_inverseViewRotation*e);
+  // the jet sits within ~35 m of the chase camera: shade it dim and steady, and keep the city lights off it
+  float jetMask=smoothstep(38.0,55.0,dist);
+  if(jetMask<=0.0){out_FragColor=vec4(c.rgb*vec3(0.40,0.42,0.50),1.0);return;}
   // moonlit base: the photo, crushed and cooled
   vec3 col=pow(c.rgb,vec3(1.6))*vec3(0.17,0.20,0.32);
   // windows on walls, aligned to floors (3.4 m) and bays (3.0 m)
@@ -322,7 +325,7 @@ void main(){
   vec2 gc=floor(pl.xy/24.0),gf=fract(pl.xy/24.0);
   vec2 lp=vec2(hash(gc+7.1),hash(gc+3.3));
   float gl=ground*step(0.84,hash(gc))*exp(-length((gf-lp)*24.0)/2.6);
-  col+=winCol*win*1.15+vec3(1.0,0.74,0.42)*gl*1.4;
+  col+=(winCol*win*1.15+vec3(1.0,0.74,0.42)*gl*1.4)*jetMask;
   // dark haze with distance, a breath of the crown on the far horizon
   float haze=1.0-exp(-dist/9000.0);
   col=mix(col,vec3(0.05,0.05,0.11),haze*0.6);
