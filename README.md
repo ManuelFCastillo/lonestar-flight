@@ -1,6 +1,6 @@
 # Lone Star Flight
 
-Keyboard flight game over the real Austin, streamed as Google Photorealistic 3D Tiles through CesiumJS and Cesium ion.
+Fly a Texas Air National Guard F-16 over the real Austin, streamed as Google Photorealistic 3D Tiles through CesiumJS and Cesium ion.
 
 ## Run it
 
