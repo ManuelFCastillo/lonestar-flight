@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Lone Star Flight · Austin</title>
 <meta name="description" content="Fly a jet over the real Austin at dusk. Keyboard only.">
+<meta name="theme-color" content="#121a2b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lone Star Flight">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Lone Star Flight">
 <meta property="og:title" content="Lone Star Flight · fly a jet over the real Austin">
@@ -57,10 +65,25 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-o
 #tools button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:grid;place-items:center;font-size:13px;font-weight:600}
 #tools button[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
 #start{position:fixed;inset:0;z-index:10;display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:24px;padding-block:80px 32px;padding-inline:clamp(16px,5vw,64px);background:linear-gradient(180deg,rgba(18,26,43,.55),rgba(18,26,43,.25) 50%,rgba(18,26,43,.75));overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-body.touch #start{grid-template-columns:1fr;align-content:start;gap:16px;padding-block:76px 28px}
-body.touch #start .card{order:-1}
-body.touch .hero h1{font-size:clamp(36px,6vw,64px);margin:8px 0 10px}
-body.touch .hero p{font-size:14px;margin-bottom:12px}
+/* touch start screen: compact enough that Take off is above the fold on a phone held sideways */
+body.touch #start{grid-template-columns:1fr;align-content:start;gap:10px;padding-block:66px 14px}
+body.touch #start .card{order:-1;padding:12px 14px}
+body.touch .card .step{margin-bottom:8px}
+body.touch .modes{gap:8px;margin-bottom:8px}
+body.touch .mode{padding:8px 10px;gap:2px}
+body.touch .mode .n{font-size:18px}
+body.touch .mode .d,body.touch .mode .glyph,body.touch .brief,body.touch .note,body.touch #touchnote{display:none}
+body.touch #go{padding:10px 14px;font-size:18px}
+body.touch .opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+body.touch .opt{margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;gap:6px;align-items:center;line-height:1}
+body.touch .opt span{font-size:0}
+body.touch .opt b{font-size:12px;color:var(--fg)}
+body.touch .opt input{width:14px;height:14px;margin:0}
+body.touch .hero{order:1;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+body.touch .hero h1{font-size:24px;margin:0;line-height:1}
+body.touch .hero h1 br{display:none}
+body.touch .hero .eyebrow,body.touch .hero p{display:none}
+body.touch .hero .meta{font-size:10px;gap:14px}
 #start.hidden{display:none}
 .hero .eyebrow{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:12px}
 .hero .eyebrow::before{content:"";width:40px;height:1px;background:var(--gold)}
@@ -185,9 +208,11 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
       <div><kbd>M</kbd> sound</div><div><kbd>L</kbd> night / dusk</div><div><kbd>F</kbd> fullscreen</div>
       <div><kbd>V</kbd> diagnostics</div><div><kbd>Enter</kbd> take off</div>
     </div>
+    <div class="opts">
     <label class="opt"><input type="checkbox" id="optAssist" checked> <span><b>Pilot assist.</b> Fly at the skyline. A second before impact the jet takes the stick for one move: a knife-edge break around the tower, a barrel roll over it, or a pull-up when boxed in. Then it hands back. You cannot crash with it on. X toggles it in flight.</span></label>
     <label class="opt"><input type="checkbox" id="optNight"> <span><b>Night.</b> The violet crown on the horizon and lit windows below, instead of dusk. L toggles it in flight.</span></label>
     <label class="opt"><input type="checkbox" id="optInvert"> <span><b>Inverted pitch.</b> Push forward to dive, pull back to climb, like a real stick: <kbd>↑</kbd> noses down, <kbd>↓</kbd> pulls up. I toggles it in flight.</span></label>
+    </div>
     <div id="tokenbox">No Cesium ion token is configured for this build. Paste one from <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">ion.cesium.com</a> to stream the city; it stays in this browser only.
       <input id="tokenIn" type="text" placeholder="eyJhbGciOi…" autocomplete="off" spellcheck="false" aria-label="Cesium ion access token"><button id="tokenGo">Use token</button></div>
     <p class="note" id="status">Google Photorealistic 3D Tiles via Cesium ion. Buildings keep loading as you fly.</p>
@@ -595,7 +620,12 @@ function gpws(now){if(!lowWarn)return;
   if(now-lastVoice>2.4){lastVoice=now;if(soundOn&&window.speechSynthesis){try{const u=new SpeechSynthesisUtterance('Pull up');u.rate=1.15;u.pitch=0.75;u.volume=0.9;speechSynthesis.speak(u);}catch(e){}}}}
 function toggleSound(){soundOn=!soundOn;$('bSound').setAttribute('aria-pressed',String(soundOn));}
 $('bSound').addEventListener('click',toggleSound);
-function fullscreen(){const el=document.documentElement;try{if(document.fullscreenElement)document.exitFullscreen();else if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});}catch(e){}}
+// Full screen: the standard call, Safari's prefixed one on iPad, and on iPhone (which has neither) the home-screen route.
+function fullscreen(){const el=document.documentElement,standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches;
+  const hint=()=>{if(standalone)return;toast(/iPhone|iPad/.test(navigator.userAgent)?'Full screen on iOS: Share, then Add to Home Screen, and open it from there':'Full screen is not available in this browser');};
+  try{if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return;}
+    const req=el.requestFullscreen||el.webkitRequestFullscreen;if(!req){hint();return;}
+    const p=req.call(el);if(p&&p.catch)p.catch(hint);}catch(e){hint();}}
 $('bFull').addEventListener('click',fullscreen);
 $('bHelp').addEventListener('click',()=>{if(playing)setPaused(true);});
 
