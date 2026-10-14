@@ -153,7 +153,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
 .bar i{display:block;height:100%;width:50%;background:var(--gold)}
 .pill{font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 8px;border:1px solid var(--line);border-radius:3px;color:var(--muted)}
 .pill[data-key]::after{content:attr(data-key);margin-left:7px;padding:0 4px;border:1px solid currentColor;border-radius:3px;font-size:8px;letter-spacing:.06em;opacity:.7;vertical-align:1px}
-body.touch .pill::after{display:none}
+@media (pointer:coarse) and (max-width:900px){.pill::after{display:none}}   /* phones have no keys; an iPad may well have one */
 .pill.on{background:var(--gold);border-color:var(--gold);color:#1a1405}
 .pill.act{background:var(--accent);border-color:var(--accent);color:#fff}
 #gate{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 14px;max-width:calc(100vw - 32px)}
