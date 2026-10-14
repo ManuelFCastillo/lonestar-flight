@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Lone Star Flight · Austin</title>
-<meta name="description" content="Fly a jet over the real Austin at dusk. Keyboard only.">
+<meta name="description" content="Fly a Texas Air National Guard F-16 over the real Austin. Keyboard or tilt.">
 <meta name="theme-color" content="#121a2b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Lone Star Flight">
 <meta property="og:title" content="Lone Star Flight · fly a jet over the real Austin">
-<meta property="og:description" content="Blue Angels style jet over Google's 3D Austin: Lady Bird Lake, the Capitol, UT Tower, Pennybacker. Eight-gate tour or free flight, pilot assist that flies the airshow for you, original soundtrack. Keyboard only.">
+<meta property="og:description" content="A Texas Air National Guard F-16 over Google's 3D Austin: Lady Bird Lake, the Capitol, UT Tower, Pennybacker. Eight-gate tour or free flight, pilot assist that flies the airshow for you, original soundtrack. Keyboard only.">
 <meta property="og:url" content="https://lonestar-flight.vercel.app/">
 <meta property="og:image" content="https://lonestar-flight.vercel.app/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -474,24 +474,29 @@ const rotY=a=>C.Quaternion.fromAxisAngle(C.Cartesian3.UNIT_Y,a),rotX=a=>C.Quater
 function part(offset,rotQ,geometry,color){inst.push(new C.GeometryInstance({geometry,modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(offset,rotQ||C.Quaternion.IDENTITY,ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(color)}}));}
 const boxG=d=>C.BoxGeometry.fromDimensions({dimensions:d,vertexFormat:VF});
 const cylG=(l,t,b)=>new C.CylinderGeometry({length:l,topRadius:t,bottomRadius:b,slices:12,vertexFormat:VF});
-part(V(0.2,0,0),rotY(Math.PI/2),cylG(13,0.55,1.15),BLUE);
-part(V(7.9,0,0),rotY(Math.PI/2),cylG(3.2,0.02,0.55),BLUE);
-part(V(-1,0,-0.2),null,boxG(V(4.6,13.2,0.28)),BLUE);
-part(V(1.6,0,-0.1),null,boxG(V(5,4.4,0.26)),BLUE);
-part(V(-2.4,0,0.1),null,boxG(V(0.8,13,0.1)),GOLD);
-part(V(-5.9,0,0.1),null,boxG(V(2.4,8,0.22)),BLUE);
-for(const s of [-1,1]){
-  part(V(-5.4,1.15*s,1.7),rotX(0.33*s),boxG(V(3.2,0.18,2.9)),BLUE);
-  part(V(-5.3,1.15*s,3.05),rotX(0.33*s),boxG(V(2.2,0.2,0.7)),GOLD);
-  part(V(-7.2,0.75*s,-0.1),rotY(Math.PI/2),cylG(1.4,0.5,0.55),GREY);
-  part(V(-8.0,0.75*s,-0.1),null,boxG(V(0.2,0.8,0.8)),FLAME);
-}
-part(V(3.2,0,0.95),null,new C.EllipsoidGeometry({radii:V(2.3,0.75,0.7),vertexFormat:VF,stackPartitions:10,slicePartitions:14}),GLASS);
-part(V(-2,0,-0.9),null,boxG(V(6,2.4,0.6)),GOLD);
+// Texas Air National Guard F-16: single engine, one tall swept tail, cropped delta wing, chin intake, two-tone grey.
+const G1=C.Color.fromCssColorString('#8d969e'),G2=C.Color.fromCssColorString('#6f7982'),DK=C.Color.fromCssColorString('#3a4047'),CANOPY=C.Color.fromCssColorString('#4a4433');
+const TXBLUE=C.Color.fromCssColorString('#002868'),TXRED=C.Color.fromCssColorString('#bf0a30'),TXWHITE=C.Color.fromCssColorString('#f2f2f2');
+part(V(0.5,0,0),rotY(Math.PI/2),cylG(14,0.5,1.0),G1);                      // fuselage
+part(V(9.0,0,0),rotY(Math.PI/2),cylG(3.0,0.02,0.5),G1);                     // radome
+part(V(1.6,0,-1.05),null,boxG(V(4.0,1.5,1.1)),G2);                          // chin intake
+part(V(-1.6,0,-0.15),null,boxG(V(5.2,10.0,0.22)),G1);                       // delta wing, main panel
+part(V(1.3,0,-0.1),null,boxG(V(3.4,5.6,0.22)),G1);                          // wing root strakes
+part(V(-6.4,0,0.05),null,boxG(V(2.4,5.8,0.18)),G1);                         // horizontal stabilators
+part(V(-5.2,0,2.3),rotY(-0.32),boxG(V(3.2,0.2,3.6)),G1);                    // vertical tail, swept
+part(V(-4.9,0,3.75),rotY(-0.32),boxG(V(2.6,0.26,0.8)),TXBLUE);              // tail flash: blue field
+part(V(-4.0,0,3.75),rotY(-0.32),boxG(V(0.34,0.3,0.34)),TXWHITE);            // the lone star
+part(V(-5.0,0,3.2),rotY(-0.32),boxG(V(2.4,0.26,0.3)),TXWHITE);              // white bar
+part(V(-5.1,0,2.88),rotY(-0.32),boxG(V(2.3,0.26,0.3)),TXRED);               // red bar
+part(V(-7.3,0,-0.05),rotY(Math.PI/2),cylG(1.8,0.85,0.75),DK);               // nozzle
+part(V(-8.25,0,-0.05),null,boxG(V(0.2,1.3,1.3)),FLAME);                     // nozzle glow
+part(V(3.4,0,0.85),null,new C.EllipsoidGeometry({radii:V(2.6,0.72,0.72),vertexFormat:VF,stackPartitions:10,slicePartitions:14}),CANOPY);   // bubble canopy
+part(V(-1.0,0,-0.75),null,boxG(V(7,1.4,0.5)),G2);                           // belly
+for(const s of [-1,1])part(V(-1.6,5.1*s,-0.1),null,boxG(V(2.2,0.25,0.25)),DK);   // wingtip rails
 const jet=scene.primitives.add(new C.Primitive({geometryInstances:inst,appearance:new C.PerInstanceColorAppearance({translucent:false,closed:true}),asynchronous:false,allowPicking:true}));   // picking on, so the ground probe can exclude the jet
 const partEntities=[jet];
 // afterburner plumes: two translucent cones behind the nozzles, shown only while Shift is held
-const flameInst=[];for(const s of [-1,1])flameInst.push(new C.GeometryInstance({geometry:cylG(4.5,0.08,0.62),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.25,0.75*s,-0.1),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}}));
+const flameInst=[new C.GeometryInstance({geometry:cylG(5.5,0.1,0.9),modelMatrix:C.Matrix4.fromTranslationQuaternionRotationScale(V(-10.95,0,-0.05),rotY(-Math.PI/2),ONE),attributes:{color:C.ColorGeometryInstanceAttribute.fromColor(C.Color.fromCssColorString('#ff9a2e').withAlpha(0.75))}})];   // one engine, one plume
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.PerInstanceColorAppearance({translucent:true,closed:false}),asynchronous:false,allowPicking:true}));flame.show=false;   // pickable so the ground probe can exclude it
 // sonic boom, the real look: a Prandtl-Glauert vapor disc that forms around the fuselage and wings, swells and tears away,
 // plus a faint refraction ripple across the frame. No glowing rings; real shocks are invisible.
@@ -527,7 +532,7 @@ function updateBoomFx(realDt){
   if(boomAge<0)return;
   boomAge+=realDt;if(boomAge>1.8){boomAge=-1;updateVapor(false);return;}
   updateVapor(cam!=='cockpit');
-  if(boomKind===2&&boomAge<1.0&&playing&&!paused){for(const s of [-1,1])emitSmoke(V(pos.x+left.x*6.6*s-fwd.x,pos.y+left.y*6.6*s-fwd.y,pos.z+left.z*6.6*s-fwd.z),V(left.x*s*2,left.y*s*2,left.z*s*2));}   // wingtip vapor left behind
+  if(boomKind===2&&boomAge<1.0&&playing&&!paused){for(const s of [-1,1])emitSmoke(V(pos.x+left.x*5.1*s-fwd.x,pos.y+left.y*5.1*s-fwd.y,pos.z+left.z*5.1*s-fwd.z),V(left.x*s*2,left.y*s*2,left.z*s*2));}   // wingtip vapor left behind
   const w=C.SceneTransforms.worldToWindowCoordinates(scene,worldPos,winTmp);if(w){boomUV.x=w.x/scene.canvas.clientWidth;boomUV.y=1-w.y/scene.canvas.clientHeight;}
 }
 
@@ -768,7 +773,7 @@ function step(dt){
   spaceHeld=K.Space?spaceHeld+dt:0;tricolor=spaceHeld>=0.45;
   if(smokeOn||tricolor){const n=Math.max(1,Math.round(speed*dt/2.2));
     const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*2.2,sy-fwd.y*i*2.2,sz-fwd.z*i*2.2),null,tint);};
-    if(tricolor){stream(6.6,0,TINT.red);stream(0,-0.3,TINT.white);stream(-6.6,0,TINT.blue);}else stream(0,-0.3,TINT.white);}
+    if(tricolor){stream(5.1,0,TINT.red);stream(0,-0.3,TINT.white);stream(-5.1,0,TINT.blue);}else stream(0,-0.3,TINT.white);}
   if(mode==='tour'&&!finished){elapsed+=dt;const g=GATES[gate];g.ent.show=true;g.ent.polyline.material=RING;if(GATES[gate+1]){GATES[gate+1].ent.show=true;GATES[gate+1].ent.polyline.material=RING_DIM;}
     const d=C.Cartesian3.distance(pos,g.local);if(G.gateHit(d,g.r)){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
       if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
