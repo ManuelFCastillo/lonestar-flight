@@ -34,7 +34,7 @@ GitHub Actions runs both on every push and pull request (`.github/workflows/test
 
 ## Controls
 
-Arrows pitch and roll · A/D rudder · W/S throttle · Shift afterburner · Space smoke · C camera · X pilot assist · R reset · P pause · I invert pitch · N music · L night / dusk · M sound · F fullscreen
+Arrows pitch, and bank into a turn (hold to tighten, release to level, 65° max) · Q/E full roll · A/D rudder · W/S throttle · Shift afterburner, hold for Mach 1 and Mach 2 · Space smoke · C camera · X pilot assist · R reset · P pause · I invert pitch · N music · L night / dusk · M sound · F fullscreen
 
 ## Night, music, afterburner
 
