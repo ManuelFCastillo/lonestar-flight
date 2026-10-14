@@ -564,7 +564,7 @@ const batImg=(up)=>{const c=document.createElement('canvas');c.width=48;c.height
 const BAT_UP=batImg(true),BAT_DOWN=batImg(false);
 const batCol=scene.primitives.add(new C.BillboardCollection());
 const BATN=MOBILE?900:2600,bats=[];const bridgeLocal=toLocal(-97.7453,30.2617,ell(131));
-for(let i=0;i<BATN;i++){const sz=0.45+Math.random()*0.5;const b=batCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:sz*2,height:sz,rotation:(Math.random()-0.5)*1.2,color:new C.Color(1,1,1,0.55+Math.random()*0.35),disableDepthTestDistance:0});b.setImage('batDown',BAT_DOWN);bats.push({b,up:false,f:7+Math.random()*7,ph:Math.random()*7,rot:b.rotation});}
+for(let i=0;i<BATN;i++){const sz=1.35+Math.random()*1.5;const b=batCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:sz*2,height:sz,rotation:(Math.random()-0.5)*1.2,color:new C.Color(1,1,1,0.55+Math.random()*0.35),disableDepthTestDistance:0});b.setImage('batDown',BAT_DOWN);bats.push({b,up:false,f:7+Math.random()*7,ph:Math.random()*7,rot:b.rotation});}
 const batTmp=V(0,0,0);
 function updateBats(t){for(let i=0;i<BATN;i++){const bt=bats[i],p=(t*0.03+i/BATN)%1,j=i*0.37,k=i*1.93;let x,y,z;
   if(p<0.22){const u=p/0.22,ang=u*12+j,r=8+u*60;x=Math.cos(ang)*r;y=-Math.sin(ang)*r*0.5-35;z=4+u*44;}                      // the column boiling up out of the bridge
