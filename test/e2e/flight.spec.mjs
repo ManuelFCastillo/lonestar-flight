@@ -160,6 +160,18 @@ test('the link unfurls: Open Graph title, description and a 1200x630 image', asy
   expect(res.headers()['content-type']).toMatch(/image\/jpeg/);
 });
 
+test('T replays the recorded flight from other cameras, then hands the stick back', async ({ page, flight }) => {
+  await flight.holdUntil('ArrowLeft', async () => Math.abs((await flight.num('hdg')) - 90) > 5);   // a few seconds of tape with a turn in it
+  await page.keyboard.press('KeyT');
+  await expect(flight.hud('pCam')).toHaveText('Replay');
+  await expect(page.locator('#toast')).toContainText('Instant replay');
+  await expect.poll(() => page.evaluate(() => window.__lsf.replaying)).toBe(true);
+  // a second T ends it; the tape is short at headless frame rates, so press only if it has not already run out
+  await page.evaluate(() => { if (window.__lsf.replaying) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyT' })); });
+  await expect.poll(() => page.evaluate(() => window.__lsf.replaying)).toBe(false);
+  await expect(flight.hud('pCam')).toHaveText('Chase');
+});
+
 test('free flight hides the gate panel and the clock', async ({ page }) => {
   await page.locator('#mFree').click();
   await page.keyboard.press('Enter');

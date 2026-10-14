@@ -46,6 +46,10 @@ Arrows pitch, and bank into a turn (hold to tighten, release to level, 65° max)
 
 Turn the phone sideways, tap Take off and allow motion access. Tilt to bank and pull (Recenter resets the level), a slider for throttle, buttons for burner, smoke, assist, camera and pause. If motion access is refused, drag on the left half of the screen as a stick. Phones get a smaller tile cache and a coarser detail target.
 
+## Instant replay
+
+The game keeps the last minute of flight, one entry per frame: position, attitude, speed, throttle, smoke, burner and the sonic booms. T plays it back through the same effects code from cinematic cameras that cycle every seven seconds: a ground camera the jet flies past, an abeam view level with the horizon, the chase view, and an orbit. T again, or R, hands the stick back where you left it. `window.__lsf.startReplay(frames, {cams, per})` and `setReplayCam(name)` drive it from scripts; `scripts/promo-video.mjs` uses that to record the social video from several angles.
+
 ## Night, music, afterburner
 
 - **Night** is the default. Google's tiles are daytime photos, so night is a full-screen post-process: the city is darkened and cooled, bright surfaces read as lit windows, and the violet crown sits on the horizon with a purple haze on distant buildings. The moon button or L switches to dusk.

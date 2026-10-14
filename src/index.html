@@ -224,7 +224,7 @@ kbd{font:600 10px/1 var(--body);border:1px solid var(--line);border-bottom-width
       <div><kbd>A</kbd><kbd>D</kbd> rudder</div>
       <div><kbd>W</kbd><kbd>S</kbd> throttle</div><div><kbd>Shift</kbd> afterburner, hold for Mach 1</div><div><kbd>Space</kbd> smoke, hold for red white blue</div>
       <div><kbd>C</kbd> camera</div><div><kbd>X</kbd> pilot assist</div><div><kbd>R</kbd> reset</div>
-      <div><kbd>P</kbd> pause</div><div><kbd>I</kbd> invert pitch</div><div><kbd>N</kbd> music</div>
+      <div><kbd>P</kbd> pause</div><div><kbd>T</kbd> instant replay</div><div><kbd>I</kbd> invert pitch</div><div><kbd>N</kbd> music</div>
       <div><kbd>M</kbd> sound</div><div><kbd>L</kbd> night / dusk</div><div><kbd>F</kbd> fullscreen</div>
       <div><kbd>V</kbd> diagnostics</div><div><kbd>Enter</kbd> take off</div>
     </div>
@@ -556,17 +556,23 @@ for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.pu
 const TINT={white:[1,0.96,0.92],red:[0.92,0.16,0.12],blue:[0.14,0.32,0.86]};
 function emitSmoke(local,vel,tint){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.tint=tint||TINT.white;if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*2;s.v.y=(Math.random()-0.5)*2;s.v.z=1+Math.random();}s.age=0;s.life=2.4+Math.random()*0.8;s.b.show=true;}
 
-// bats: a stream leaving the bridge eastward along the river
-const batCol=scene.primitives.add(new C.PointPrimitiveCollection());
-const BATN=400,bats=[];const bridgeLocal=toLocal(-97.7453,30.2617,ell(131));
-for(let i=0;i<BATN;i++)bats.push(batCol.add({position:C.Cartesian3.ZERO,pixelSize:2.5,color:C.Color.fromCssColorString('#1a1410'),disableDepthTestDistance:0}));
+// bats: a stream leaving the bridge eastward along the river, flapping silhouettes rather than dots
+const batImg=(up)=>{const c=document.createElement('canvas');c.width=64;c.height=32;const g=c.getContext('2d');g.fillStyle='#14100c';const tip=up?4:27,mid=up?11:21;
+  g.beginPath();g.moveTo(32,21);g.quadraticCurveTo(25,9,16,mid);g.quadraticCurveTo(8,tip-2,1,tip);g.quadraticCurveTo(9,25,15,22);g.quadraticCurveTo(23,19,29,25);g.lineTo(32,30);g.lineTo(35,25);g.quadraticCurveTo(41,19,49,22);g.quadraticCurveTo(55,25,63,tip);g.quadraticCurveTo(56,tip-2,48,mid);g.quadraticCurveTo(39,9,32,21);g.fill();
+  g.beginPath();g.ellipse(32,21,3,6,0,0,Math.PI*2);g.fill();return c;};
+const BAT_UP=batImg(true),BAT_DOWN=batImg(false);
+const batCol=scene.primitives.add(new C.BillboardCollection());
+const BATN=700,bats=[];const bridgeLocal=toLocal(-97.7453,30.2617,ell(131));
+for(let i=0;i<BATN;i++){const sz=0.9+Math.random()*0.9;const b=batCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:sz*1.7,height:sz*0.85,color:new C.Color(1,1,1,0.95),disableDepthTestDistance:0});b.setImage('batDown',BAT_DOWN);bats.push({b,up:false,f:5+Math.random()*5,ph:Math.random()*7});}
 const batTmp=V(0,0,0);
-function updateBats(t){for(let i=0;i<BATN;i++){const p=(t*0.035+i/BATN)%1,j=i*0.37;let x,y,z;if(p<0.25){const u=p/0.25,ang=u*14+j,r=20+u*70;x=Math.cos(ang)*r;y=-Math.sin(ang)*r*0.5-40;z=6+u*48;}else{const u=(p-0.25)/0.75;x=u*4000+Math.sin(j*5)*40;y=-60-Math.sin(x/420+j)*70-x*0.12;z=50+Math.sin(x/230+j)*14+Math.sin(t*2.5+j)*3;}batTmp.x=bridgeLocal.x+x;batTmp.y=bridgeLocal.y+y;batTmp.z=bridgeLocal.z+z;bats[i].position=toWorld(batTmp,bats[i].position);}}
+function updateBats(t){for(let i=0;i<BATN;i++){const bt=bats[i],p=(t*0.035+i/BATN)%1,j=i*0.37;let x,y,z;if(p<0.25){const u=p/0.25,ang=u*14+j,r=20+u*70;x=Math.cos(ang)*r;y=-Math.sin(ang)*r*0.5-40;z=6+u*48;}else{const u=(p-0.25)/0.75;x=u*4000+Math.sin(j*5)*40;y=-60-Math.sin(x/420+j)*70-x*0.12;z=50+Math.sin(x/230+j)*14+Math.sin(t*2.5+j)*3;}batTmp.x=bridgeLocal.x+x;batTmp.y=bridgeLocal.y+y;batTmp.z=bridgeLocal.z+z;bt.b.position=toWorld(batTmp,bt.b.position);
+  const up=Math.sin(t*bt.f+bt.ph)>0;if(up!==bt.up){bt.up=up;bt.b.setImage(up?'batUp':'batDown',up?BAT_UP:BAT_DOWN);}}}
 
-// gates as glowing rings
-const RING=new C.PolylineGlowMaterialProperty({glowPower:0.25,color:GOLD}),RING_DIM=new C.PolylineGlowMaterialProperty({glowPower:0.25,color:GOLD.withAlpha(0.35)});
-function ringPositions(g,i){const nx=GATES[i+1]||GATES[i-1];const dx=nx.local.x-g.local.x,dy=nx.local.y-g.local.y;const L=Math.hypot(dx,dy)||1;const ux=-dy/L,uy=dx/L;const pts=[];for(let k=0;k<=40;k++){const a=k/40*Math.PI*2;pts.push(toWorld(V(g.local.x+ux*Math.cos(a)*g.r,g.local.y+uy*Math.cos(a)*g.r,g.local.z+Math.sin(a)*g.r)));}return pts;}
-GATES.forEach((g,i)=>{g.ent=viewer.entities.add({show:false,polyline:{positions:ringPositions(g,i),width:7,material:RING}});});
+// gates as thick flat rings with a dark outline, twenty-sided: the 16-bit look
+const RING_EDGE=C.Color.fromCssColorString('#2b1a06');
+const RING=new C.PolylineOutlineMaterialProperty({color:GOLD,outlineColor:RING_EDGE,outlineWidth:5}),RING_DIM=new C.PolylineOutlineMaterialProperty({color:GOLD.withAlpha(0.4),outlineColor:RING_EDGE.withAlpha(0.4),outlineWidth:5});
+function ringPositions(g,i){const nx=GATES[i+1]||GATES[i-1];const dx=nx.local.x-g.local.x,dy=nx.local.y-g.local.y;const L=Math.hypot(dx,dy)||1;const ux=-dy/L,uy=dx/L;const pts=[];for(let k=0;k<=20;k++){const a=k/20*Math.PI*2;pts.push(toWorld(V(g.local.x+ux*Math.cos(a)*g.r,g.local.y+uy*Math.cos(a)*g.r,g.local.z+Math.sin(a)*g.r)));}return pts;}
+GATES.forEach((g,i)=>{g.ent=viewer.entities.add({show:false,polyline:{positions:ringPositions(g,i),width:18,material:RING}});});
 function rebuildRing(g){g.ent.polyline.positions=ringPositions(g,GATES.indexOf(g));}
 
 // labels
@@ -576,7 +582,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
 const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame]);   // never let the probe land on the jet's own effects
-window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
+window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},startReplay,endReplay,setReplayCam,probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{return scene.sampleHeight(cartoTmp,EXCL);}catch(e){return undefined;}}
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
@@ -584,7 +590,8 @@ let anchorCursor=0;
 function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anchorCursor=(anchorCursor+1)%ANCHORS.length;if(a.resolved)continue;const h=sampleGround(a.lon,a.lat);if(h===undefined)continue;a.resolved=true;a.local=toLocal(a.lon,a.lat,h+a.agl);if(a.r)rebuildRing(a);if(a.lab)a.lab.position=toWorld(a.local);}}
 
 // ---------- state ----------
-const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9;
+const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9,replay=null,boomFlag=0;
+const REC=[];   // the last 60 s of flight, one entry per frame, for the instant replay
 let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
 const camPos=V(0,0,0);
 function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
@@ -596,7 +603,8 @@ window.addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT'&&e
   if(!playing){if(e.code==='Enter'&&!$('go').disabled)go();if(e.code==='KeyL')setNight(!nightOn,false);return;}
   if(e.code==='Space')spaceDownAt=performance.now();   // tap toggles smoke (on keyup); hold for red, white and blue
   if(e.code==='KeyC'){cam=cam==='chase'?'cockpit':'chase';$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';}
-  if(e.code==='KeyR')spawn();
+  if(e.code==='KeyR'){endReplay();spawn();}
+  if(e.code==='KeyT'){if(replay)endReplay();else startReplay();}
   if(e.code==='KeyI')setInvert(!invert,true);
   if(e.code==='KeyX')setAssist(!assist,true);
   if(e.code==='KeyM')toggleSound();
@@ -780,24 +788,56 @@ function step(dt){
   }else if(agl<4){crash();return;}
   lowWarn=groundH!==undefined&&agl<26&&fwd.z<0.08;   // ground proximity: the beeper and the PULL UP flasher
   spaceHeld=K.Space?spaceHeld+dt:0;tricolor=spaceHeld>=0.45;
-  if(smokeOn||tricolor){const n=Math.max(1,Math.round(speed*dt/2.2));
-    const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*2.2,sy-fwd.y*i*2.2,sz-fwd.z*i*2.2),null,tint);};
-    if(tricolor){stream(5.1,0,TINT.red);stream(0,-0.3,TINT.white);stream(-5.1,0,TINT.blue);}else stream(0,-0.3,TINT.white);}
+  trail(dt);
   if(mode==='tour'&&!finished){elapsed+=dt;const g=GATES[gate];g.ent.show=true;g.ent.polyline.material=RING;if(GATES[gate+1]){GATES[gate+1].ent.show=true;GATES[gate+1].ent.polyline.material=RING_DIM;}
     const d=C.Cartesian3.distance(pos,g.local);if(G.gateHit(d,g.r)){g.ent.show=false;ping(880+gate*60,0.5);gate++;if(assist&&!mnv)startMnv('vroll',1,'Victory roll');
       if(gate>=GATES.length){finished=true;ping(1320,1.2);$('doneTime').textContent=fmt(elapsed);$('doneGates').innerHTML=GATES.map(x=>'<li>'+x.n+'</li>').join('');$('done').classList.add('on');}
       else toast('Gate '+(gate+1)+': '+GATES[gate].n);}}
 }
+function trail(dt){if(!(smokeOn||tricolor))return;const n=Math.max(1,Math.round(speed*dt/2.2));
+  const stream=(ox,oz,tint)=>{const sx=pos.x-fwd.x*8+left.x*ox+up.x*oz,sy=pos.y-fwd.y*8+left.y*ox+up.y*oz,sz=pos.z-fwd.z*8+left.z*ox+up.z*oz;for(let i=0;i<n;i++)emitSmoke(V(sx-fwd.x*i*2.2,sy-fwd.y*i*2.2,sz-fwd.z*i*2.2),null,tint);};
+  if(tricolor){stream(5.1,0,TINT.red);stream(0,-0.3,TINT.white);stream(-5.1,0,TINT.blue);}else stream(0,-0.3,TINT.white);}
 function crash(){crashed=1.3;$('flash').style.opacity=0.9;ping(120,0.8);toast('Splash. Back over Zilker.');smokeOn=false;}
-function sonicBoom(kind){boomKind=kind||1;boomSound();boomAge=0;shake=0.45;$('flash').style.opacity=0.25;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},60);
+function sonicBoom(kind){boomKind=kind||1;boomFlag=boomKind;boomSound();boomAge=0;shake=0.45;$('flash').style.opacity=0.25;setTimeout(()=>{if(crashed<=0)$('flash').style.opacity=0;},60);
   const sp=$('splash');sp.textContent=boomKind===2?'MACH 2':'MACH 1';sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');
   window.__lsfBooms=(window.__lsfBooms||0)+1;}
+
+// ---------- instant replay: the last minute of flight, played back from cinematic cameras ----------
+// Flight state is recorded per frame (position, attitude, speed, smoke, burner, booms) and played back through the same
+// effects code, so the smoke, plumes and vapor are re-created rather than stored. T starts it; it hands the stick back when the tape runs out.
+const REPLAY_CAMS=['ground','side','chase','orbit'];
+const qa=new C.Quaternion(),qb=new C.Quaternion();
+function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,boom:boomFlag});boomFlag=0;while(REC.length&&REC[0].t<T-60)REC.shift();}
+function startReplay(frames,opts){frames=frames||REC.slice();opts=opts||{};if(frames.length<2||frames[frames.length-1].t-frames[0].t<1){toast('Nothing to replay yet');return false;}
+  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,per:opts.per||7,anchor:null,orbA:0,
+    saved:{p:C.Cartesian3.clone(pos),q:C.Quaternion.clone(q),s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,cam,bankTarget}};
+  mnv=null;lowWarn=false;boomAge=-1;$('pCam').textContent='Replay';toast('Instant replay');return true;}
+function endReplay(){if(!replay)return;const s=replay.saved;replay=null;C.Cartesian3.clone(s.p,pos);C.Quaternion.clone(s.q,q);speed=s.s;throttle=s.th;burner=s.b;smokeOn=s.sm;tricolor=s.tc;cam=s.cam;bankTarget=s.bankTarget;boomAge=-1;boomFlag=0;$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';toast('Live');}
+function setReplayCam(name){if(!replay)return;const i=replay.cams.indexOf(name);if(i<0)replay.cams.push(name);replay.camI=i<0?replay.cams.length-1:i;replay.camT=0;replay.anchor=null;}
+function replayStep(dt){const r=replay;r.t+=dt;const f=r.f;while(r.i<f.length-1&&f[r.i+1].t<=r.t)r.i++;if(r.i>=f.length-1){endReplay();return;}
+  const a=f[r.i],b=f[r.i+1],u=clamp((r.t-a.t)/Math.max(1e-6,b.t-a.t),0,1);
+  pos.x=a.p[0]+(b.p[0]-a.p[0])*u;pos.y=a.p[1]+(b.p[1]-a.p[1])*u;pos.z=a.p[2]+(b.p[2]-a.p[2])*u;
+  qa.x=a.q[0];qa.y=a.q[1];qa.z=a.q[2];qa.w=a.q[3];qb.x=b.q[0];qb.y=b.q[1];qb.z=b.q[2];qb.w=b.q[3];C.Quaternion.slerp(qa,qb,u,q);
+  speed=a.s+(b.s-a.s)*u;throttle=a.th;burner=a.b;burnerHeld=burner?burnerHeld+dt:0;smokeOn=a.sm;tricolor=a.tc;
+  if(a.boom&&r.lastBoomI!==r.i){r.lastBoomI=r.i;sonicBoom(a.boom);boomFlag=0;}
+  body(AX,fwd);body(AY,left);body(AZ,up);trail(dt);
+  r.camT+=dt;if(r.camT>=r.per){r.camT=0;r.camI=(r.camI+1)%r.cams.length;r.anchor=null;}}
+function replayCamera(dt){const r=replay,m=r.cams[r.camI];
+  if(m==='orbit'){r.orbA+=dt*0.3;const R=46+Math.sin(r.orbA*0.7)*10;camPos.x=pos.x+Math.cos(r.orbA)*R;camPos.y=pos.y+Math.sin(r.orbA)*R;camPos.z=pos.z+12;}
+  else if(m==='side'){const hx=-fwd.y,hy=fwd.x,hl=Math.hypot(hx,hy)||1;camPos.x=pos.x+hx/hl*38-fwd.x*4;camPos.y=pos.y+hy/hl*38-fwd.y*4;camPos.z=pos.z+8;}   // abeam, level with the horizon
+  else{ // ground: a fixed spot ahead and off to one side, re-placed once the jet has flown past it
+    if(!r.anchor||r.anchor.passed){const side=r.anchor?-r.anchor.side:1;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fwd.x*420+left.x*110*side,y:pos.y+fwd.y*420+left.y*110*side,z:Math.max(gz+18,pos.z-90),side,passed:false};}
+    const an=r.anchor,along=(pos.x-an.x)*fwd.x+(pos.y-an.y)*fwd.y;if(along>260||Math.hypot(pos.x-an.x,pos.y-an.y)>1400)an.passed=true;camPos.x=an.x;camPos.y=an.y;camPos.z=an.z;}
+  if(groundH!==undefined&&camPos.z<groundH+4)camPos.z=groundH+4;
+  toWorld(camPos,camDest);const d=V(pos.x-camPos.x,pos.y-camPos.y,pos.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);
+  C.Cartesian3.normalize(camDir,camDir);C.Cartesian3.normalize(camUp,camUp);scene.camera.frustum.fov=BASE_FOV;scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});}
 
 // ---------- camera ----------
 const camDest=new C.Cartesian3(),camDir=new C.Cartesian3(),camUp=new C.Cartesian3(),lookL=new C.Cartesian3(),desired=new C.Cartesian3();
 function updateCamera(dt){
   body(AX,fwd);body(AZ,up);
   const bodyVisible=cam!=='cockpit';partEntities.forEach(e=>e.show=bodyVisible&&!jetModel);if(jetModel)jetModel.show=bodyVisible;   // the hand-built jet stands in until the glTF is ready
+  if(replay&&replay.cams[replay.camI]!=='chase'){replayCamera(dt);return;}
   if(cam==='cockpit'){desired.x=pos.x+fwd.x*2.5+up.x*1.3;desired.y=pos.y+fwd.y*2.5+up.y*1.3;desired.z=pos.z+fwd.z*2.5+up.z*1.3;C.Cartesian3.clone(desired,camPos);toWorld(camPos,camDest);toWorldVec(fwd,camDir);toWorldVec(up,camUp);}
   else{desired.x=pos.x-fwd.x*30+up.x*6.5;desired.y=pos.y-fwd.y*30+up.y*6.5;desired.z=pos.z-fwd.z*30+up.z*6.5;if(crashed>0)C.Cartesian3.clone(camPos,desired);
     const k=1-Math.exp(-dt*5);camPos.x+=(desired.x-camPos.x)*k;camPos.y+=(desired.y-camPos.y)*k;camPos.z+=(desired.z-camPos.z)*k;
@@ -817,7 +857,7 @@ scene.preUpdate.addEventListener(()=>{
   const now=performance.now();const realDt=Math.min(0.05,(now-last)/1000);last=now;
   const dt=(boomAge>=0&&boomAge<0.6)?realDt*0.5:realDt;   // a beat of slow motion as the vapor forms
   resolveAnchors();
-  if(playing&&!paused){step(dt);T+=dt;}
+  if(playing&&!paused){if(replay)replayStep(dt);else{step(dt);record();}T+=dt;}
   toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
   updateBats(T+40);
   for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=3+f*22;s.b.width=sc;s.b.height=sc;const tn=s.tint||TINT.white;s.b.color=new C.Color(tn[0],tn[1],tn[2],0.75*(1-f)*(1-f*0.3));s.b.position=toWorld(s.p,smokeTmp);}
