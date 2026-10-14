@@ -94,14 +94,22 @@ describe('engine', () => {
     assert.equal(G.burnerStage(true, 2.49), 1);
     assert.equal(G.burnerStage(true, 2.5), 2);
     assert.equal(G.targetSpeed(1, true, 0), 390);
-    assert.equal(G.targetSpeed(1, true, 3), 580);
+    assert.equal(G.targetSpeed(1, true, 3), 630);
     assert.equal(G.speedCeiling(true, 0), 395);
-    assert.equal(G.speedCeiling(true, 3), 620);
-    assert.equal(G.stepSpeed(700, 1, -1, 1, true, 3), 620);   // clamped at the stage-two ceiling
-    assert.equal(G.stepSpeed(620, 1, 0, 1, false, 0), 340);   // let go of the burner: back under the normal ceiling at once
-    let v = 300;
-    for (let i = 0; i < 900; i++) v = G.stepSpeed(v, 1, 0, 1 / 60, true, 3);   // 15 s in stage two
-    assert.ok(Math.abs(v - 580) < 0.5, 'stage two settled at ' + v);
+    assert.equal(G.speedCeiling(true, 3), 720);
+    assert.equal(G.stepSpeed(720, 1, 0, 1, false, 0), 340);   // let go of the burner: back under the normal ceiling at once
+    let v = 300, peak = 0;
+    for (let i = 0; i < 900; i++) { v = G.stepSpeed(v, 1, -1, 1 / 60, true, 3); peak = Math.max(peak, v); }   // 15 s in stage two, diving
+    assert.ok(peak <= 720, 'ceiling held, peak ' + peak);
+    v = 300;
+    for (let i = 0; i < 900; i++) v = G.stepSpeed(v, 1, 0, 1 / 60, true, 3);
+    assert.ok(Math.abs(v - 630) < 0.5, 'stage two settled at ' + v);
+  });
+  test('past Mach 1 the jet accelerates about twice as hard', () => {
+    const below = G.stepSpeed(380, 1, 0, 0.1, true, 3) - 380;
+    const above = G.stepSpeed(420, 1, 0, 0.1, true, 3) - 420;
+    assert.ok(above / (630 - 420) > 1.8 * (below / (630 - 380)), 'supersonic pull ' + above + ' vs subsonic ' + below);
+    assert.equal(G.BOOM_KICK, 35);
   });
   test('the sound barrier sits above stage one and the boom fires once, on the way up', () => {
     assert.ok(G.speedCeiling(true, 0) < G.MACH1, 'stage one must not be able to boom');
