@@ -125,6 +125,28 @@ describe('engine', () => {
   });
 });
 
+describe('bank-to-turn', () => {
+  test('holding right ramps the bank target toward 65 degrees and never past it', () => {
+    let target = 0;
+    for (let i = 0; i < 300; i++) target = G.bankController(target, 1, 0, 1 / 60, -1).target;
+    assert.ok(Math.abs(target + G.MAX_BANK) < 1e-3, 'target ' + target);   // right turn = negative (left-positive convention)
+    assert.ok(Math.abs(target) <= G.MAX_BANK + 1e-9);
+  });
+  test('releasing levels the wings: target decays to zero and the roll command points back to level', () => {
+    let target = -G.MAX_BANK;
+    for (let i = 0; i < 300; i++) target = G.bankController(target, 0, 0, 1 / 60, -1).target;
+    assert.ok(Math.abs(target) < 1e-3);
+    const r = G.bankController(0, 0, -0.8, 0.016, -1);   // banked 0.8 rad right, no input
+    assert.ok(r.rollIn < 0, 'should roll left (RL = -1) to level');
+  });
+  test('the roll command obeys the engine sign and saturates', () => {
+    const cesium = G.bankController(-G.MAX_BANK, 1, 0, 0.016, -1);   // wants right, is level, RL=-1 (right = +1)
+    assert.equal(cesium.rollIn, 1);
+    const three = G.bankController(-G.MAX_BANK, 1, 0, 0.016, 1);     // same, in the engine where +1 banks left
+    assert.equal(three.rollIn, -1);
+  });
+});
+
 describe('pilot assist', () => {
   test('probe reaches 1.6 s ahead, clamped to 150..950 m', () => {
     assert.equal(G.probeDistance(50), 150);

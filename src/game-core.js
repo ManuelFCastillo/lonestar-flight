@@ -44,6 +44,17 @@
   function mach2Crossing(prevSpeed, speed) { return prevSpeed < MACH2 && speed >= MACH2; }
   function mach(speed) { return speed / SOUND_MS; }
 
+  // ---- bank-to-turn (arcade) ----
+  // The arrow keys command a bank angle, not a roll rate: hold to ramp toward MAX_BANK, release to level.
+  // bankL and the returned target are bank angles with left positive. RL is this engine's roll input that banks left.
+  const MAX_BANK = 65 * Math.PI / 180;
+  function bankController(target, turnRight, bankL, dt, RL) {
+    const want = -turnRight * MAX_BANK;
+    target += (want - target) * Math.min(1, dt * 2.5);
+    const rollIn = clamp(RL * (target - bankL) * 2.5, -1, 1);
+    return { target, rollIn };
+  }
+
   // ---- pilot assist ----
   const MARGIN = 12;                  // meters of clearance the probe demands above whatever it sees
   function probeDistance(speed) { return clamp(speed * 1.6, 150, 950); }
@@ -91,5 +102,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
 });
