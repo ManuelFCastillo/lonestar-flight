@@ -508,27 +508,30 @@ C.Model.fromGltfAsync({url:'jet/scene.gltf',modelMatrix:jet.modelMatrix,upAxis:C
 // bake a lone instance's matrix into the vertices, it folds it into the primitive's modelMatrix once, which placeJet then overwrites.
 // Afterburner: a cone that carries its own shader (blue-white core at the nozzle, shock diamonds marching back, a ragged
 // flickering tip), stretched from the nozzle by burner stage, with a glow sprite in the nozzle and a heat shimmer behind it.
-const FLAME_LEN=5,FLAME_BASE=C.Matrix4.fromTranslationQuaternionRotationScale(V(-7.0,0,-0.05),rotY(-Math.PI/2),ONE),FLAME_SHIFT=C.Matrix4.fromTranslation(V(0,0,FLAME_LEN/2));   // wide end in the nozzle; the cone grows away from it
+const FLAME_LEN=6,FLAME_BASE=C.Matrix4.fromTranslationQuaternionRotationScale(V(-7.0,0,-0.05),rotY(-Math.PI/2),ONE),FLAME_SHIFT=C.Matrix4.fromTranslation(V(0,0,FLAME_LEN/2));   // wide end in the nozzle; the cone grows away from it
 const FLAME_SRC=`
 float hashf(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hashf(i),hashf(i+vec2(1.0,0.0)),f.x),mix(hashf(i+vec2(0.0,1.0)),hashf(i+vec2(1.0,1.0)),f.x),f.y);}
 czm_material czm_getMaterial(czm_materialInput mi){
   czm_material m=czm_getDefaultMaterial(mi);
-  float t=mi.st.t,s=mi.st.s;                                                    // t: 0 at the nozzle, 1 at the tip
-  float n=vnoise(vec2(s*4.0+u_t*1.5,t*7.0-u_t*14.0));
-  float rag=smoothstep(1.0,0.55,t+(n-0.5)*0.5);                                  // ragged, flickering end
-  float dia=pow(0.5+0.5*cos(t*(30.0+6.0*u_stage)-u_t*18.0),10.0)*smoothstep(0.75,0.05,t);   // shock diamonds, faint in daylight
-  vec3 core=vec3(1.0,0.93,0.78),mid=vec3(1.0,0.66,0.36),tip=vec3(0.82,0.58,0.70);           // pale yellow-white at the nozzle, peach, a lilac haze at the end
-  vec3 col=mix(mix(core,mid,smoothstep(0.0,0.35,t)),tip,smoothstep(0.35,1.0,t))+vec3(1.0,0.85,0.7)*dia*0.6;
-  float rim=pow(abs(dot(normalize(mi.normalEC),vec3(0.0,0.0,1.0))),1.3);          // gas, not paper: the silhouette fades away
-  m.diffuse=col;m.emission=col*0.55;m.alpha=clamp(((0.5-0.45*t)*rag*(0.75+0.25*n)+dia*0.25)*rim*u_k*smoothstep(0.0,0.1,t),0.0,1.0);   // the nozzle disc covers the first half metre, so the cone's wide end never draws a ring
+  float t=mi.st.t,s=mi.st.s;   /* t: 0 at the nozzle, 1 at the tip */
+  float n=vnoise(vec2(s*5.0+u_t*1.3,t*9.0-u_t*16.0));
+  float rag=smoothstep(1.0,0.6,t+(n-0.5)*0.35);   /* the end thins out and flickers */
+  float spacing=7.0+1.5*u_stage;   /* shock diamonds: evenly spaced bright knots that fade down the plume */
+  float dia=pow(max(0.0,cos(t*spacing*6.2832)),14.0)*smoothstep(0.85,0.0,t);
+  vec3 hot=vec3(1.0,0.78,0.55),pink=vec3(0.98,0.52,0.82),blue=vec3(0.55,0.55,1.0);   /* peach at the lip, magenta, then blue-violet: the F-22 look */
+  vec3 col=mix(mix(hot,pink,smoothstep(0.0,0.22,t)),blue,smoothstep(0.25,0.9,t))+vec3(1.0,0.82,0.95)*dia*0.9;
+  float facing=abs(dot(normalize(mi.normalEC),vec3(0.0,0.0,1.0)));
+  float rim=mix(0.3,1.0,pow(facing,1.2));   /* soft edges, but never invisible end-on */
+  m.diffuse=col;m.emission=col*0.6;
+  m.alpha=clamp(((0.42-0.32*t)*rag*(0.8+0.2*n)+dia*0.4)*rim*u_k*smoothstep(0.0,0.05,t),0.0,1.0);
   return m;
 }`;
-const flameMat=new C.Material({fabric:{type:'Afterburner',uniforms:{u_t:0.0,u_stage:0.0,u_k:1.0},source:FLAME_SRC}}),haloMat=new C.Material({fabric:{type:'AfterburnerHalo',uniforms:{u_t:0.0,u_stage:0.0,u_k:0.16},source:FLAME_SRC}});
-const flameInst=[new C.GeometryInstance({geometry:new C.CylinderGeometry({length:FLAME_LEN,topRadius:0.1,bottomRadius:0.62,slices:24,vertexFormat:C.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat})})];
-const flameGeom=()=>[new C.GeometryInstance({geometry:new C.CylinderGeometry({length:FLAME_LEN,topRadius:0.1,bottomRadius:0.62,slices:24,vertexFormat:C.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat})})];
+const flameMat=new C.Material({fabric:{type:'Afterburner',uniforms:{u_t:0.0,u_stage:0.0,u_k:1.0},source:FLAME_SRC}}),haloMat=new C.Material({fabric:{type:'AfterburnerHalo',uniforms:{u_t:0.0,u_stage:0.0,u_k:0.12},source:FLAME_SRC}});
+const flameInst=[new C.GeometryInstance({geometry:new C.CylinderGeometry({length:FLAME_LEN,topRadius:0.2,bottomRadius:0.46,slices:28,vertexFormat:C.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat})})];
+const flameGeom=()=>[new C.GeometryInstance({geometry:new C.CylinderGeometry({length:FLAME_LEN,topRadius:0.2,bottomRadius:0.46,slices:28,vertexFormat:C.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat})})];
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.MaterialAppearance({material:flameMat,translucent:true,closed:false,flat:true,materialSupport:C.MaterialAppearance.MaterialSupport.TEXTURED}),asynchronous:false,allowPicking:true}));flame.show=false;   // pickable so the ground probe can exclude it
-const halo=scene.primitives.add(new C.Primitive({geometryInstances:flameGeom(),appearance:new C.MaterialAppearance({material:haloMat,translucent:true,closed:false,flat:true,materialSupport:C.MaterialAppearance.MaterialSupport.TEXTURED}),asynchronous:false,allowPicking:true}));halo.show=false;const HALO_SCALE=C.Matrix4.fromScale(V(1.9,1.9,1.15));   // a wider, fainter sheath around the core
+const halo=scene.primitives.add(new C.Primitive({geometryInstances:flameGeom(),appearance:new C.MaterialAppearance({material:haloMat,translucent:true,closed:false,flat:true,materialSupport:C.MaterialAppearance.MaterialSupport.TEXTURED}),asynchronous:false,allowPicking:true}));halo.show=false;const HALO_SCALE=C.Matrix4.fromScale(V(1.35,1.35,1.0));   // a wider, fainter sheath around the core
 let flameL=0.6;const flameScale=new C.Matrix4(),flameM1=new C.Matrix4(),flameM2=new C.Matrix4();
 // heat shimmer: the frame behind the plume wobbles. Fed with the plume's two ends in screen space and its on-screen radius.
 const heatA=new C.Cartesian2(0.5,0.5),heatB=new C.Cartesian2(0.5,0.5);let heatR=0.02,heatOn=0;const heatW=[new C.Cartesian3(),new C.Cartesian3(),new C.Cartesian3()],heatP=[new C.Cartesian2(),new C.Cartesian2(),new C.Cartesian2()];
@@ -556,7 +559,8 @@ void main(){
   out_FragColor=vec4(texture(colorTexture,uv+n*w*0.010).rgb,1.0);
 }`;
 if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:HEAT_FS,uniforms:{u_a:()=>heatA,u_b:()=>heatB,u_r:()=>heatR,u_t:()=>performance.now()/1000,u_on:()=>heatOn}}));
-function heatUpdate(){if(MOBILE||!flame.show){heatOn=0;return;}const M=jet.modelMatrix;
+let burnVis=false;
+function heatUpdate(){if(MOBILE||!burnVis){heatOn=0;return;}const M=jet.modelMatrix;
   C.Matrix4.multiplyByPoint(M,V(-7,0,-0.05),heatW[0]);C.Matrix4.multiplyByPoint(M,V(-7-FLAME_LEN*flameL,0,-0.05),heatW[1]);C.Matrix4.multiplyByPoint(M,V(-7,0,0.9),heatW[2]);
   const wa=C.SceneTransforms.worldToWindowCoordinates(scene,heatW[0],heatP[0]),wb=C.SceneTransforms.worldToWindowCoordinates(scene,heatW[1],heatP[1]),wc=C.SceneTransforms.worldToWindowCoordinates(scene,heatW[2],heatP[2]);
   if(!wa||!wb||!wc){heatOn=0;return;}const W=scene.canvas.clientWidth,H=scene.canvas.clientHeight;
@@ -591,7 +595,7 @@ void main(){
 }`;
 if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
 function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());
-  const now=performance.now()/1000,st=G.burnerStage(burner,burnerHeld),want=burner?(st===2?1.2:0.85):0.5;flameL+=(want-flameL)*0.12;const flick=1+Math.sin(now*37)*0.04+Math.sin(now*23.7)*0.03;   // the plume grows with the second stage and never sits still
+  const now=performance.now()/1000,st=G.burnerStage(burner,burnerHeld),want=burner?(st===2?1.7:1.2):0.5;flameL+=(want-flameL)*0.12;const flick=1+Math.sin(now*37)*0.04+Math.sin(now*23.7)*0.03;   // the plume grows with the second stage and never sits still
   flameMat.uniforms.u_t=now;flameMat.uniforms.u_stage=st;haloMat.uniforms.u_t=now*0.8;haloMat.uniforms.u_stage=st;C.Matrix4.fromScale(V(1,1,flameL*flick),flameScale);
   flame.modelMatrix=C.Matrix4.multiply(C.Matrix4.multiply(C.Matrix4.multiply(jet.modelMatrix,FLAME_BASE,flameM1),flameScale,flameM2),FLAME_SHIFT,new C.Matrix4());
   halo.modelMatrix=C.Matrix4.multiply(C.Matrix4.multiply(C.Matrix4.multiply(C.Matrix4.multiply(jet.modelMatrix,FLAME_BASE,flameM1),HALO_SCALE,flameM2),flameScale,flameM1),FLAME_SHIFT,new C.Matrix4());if(jetModel)jetModel.modelMatrix=C.Matrix4.multiply(jet.modelMatrix,JET_FIX,new C.Matrix4());}
@@ -613,8 +617,35 @@ const SMOKEN=window.__lsfFakeTiles?320:MOBILE?600:1500,smoke=[];   // three stre
 for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,rotation:Math.random()*6.283,color:new C.Color(1,0.95,0.9,0),show:false});b.setImage('puff',smokeImg);smoke.push({b,age:9,life:1,k:0.85+Math.random()*0.3,p:V(0,0,0),v:V(0,0,0)});}
 let smokeIdx=0;
 const nozzleImg=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const r=g.createRadialGradient(64,64,0,64,64,64);
-  r.addColorStop(0,'rgba(255,250,225,1)');r.addColorStop(0.28,'rgba(255,214,120,1)');r.addColorStop(0.5,'rgba(255,140,40,.9)');r.addColorStop(0.62,'rgba(255,110,30,.35)');r.addColorStop(1,'rgba(255,90,20,0)');g.fillStyle=r;g.fillRect(0,0,128,128);return c;})();
+  r.addColorStop(0,'rgba(255,248,220,1)');r.addColorStop(0.3,'rgba(255,200,110,1)');r.addColorStop(0.55,'rgba(255,130,45,.85)');r.addColorStop(0.72,'rgba(255,100,30,.18)');r.addColorStop(0.85,'rgba(255,90,20,0)');g.fillStyle=r;g.fillRect(0,0,128,128);return c;})();
 const glowCol=scene.primitives.add(new C.BillboardCollection());const glow=glowCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:2.4,height:2.4,color:new C.Color(1,1,1,1),show:false});glow.setImage('nozzle',nozzleImg);const glowTmp=new C.Cartesian3(),glowFwd=new C.Cartesian3(),glowToCam=new C.Cartesian3();   // the hot nozzle while the burner is lit
+// The exhaust itself: a chain of soft camera-facing sprites down the plume axis, plus brighter knots for the shock diamonds.
+// Sprites read as gas from every angle; a cone mesh read as a glass tube from below and a swirl from behind.
+const plumeImg=(function(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=g.createRadialGradient(32,32,0,32,32,32);
+  r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.5,'rgba(255,255,255,.65)');r.addColorStop(0.8,'rgba(255,255,255,.2)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c;})();
+const PLUME_N=22,PLUME_D=5,plumeCol=scene.primitives.add(new C.BillboardCollection()),plume=[],plumeKnots=[];
+for(let i=0;i<PLUME_N;i++){const b=plumeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:1,height:1,show:false});b.setImage('plume',plumeImg);plume.push(b);}
+for(let i=0;i<PLUME_D;i++){const b=plumeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:0.5,height:0.5,show:false});b.setImage('plume',plumeImg);plumeKnots.push(b);}
+const plumeTmp=new C.Cartesian3(),plumeLocal=new C.Cartesian3();
+const PLUME_HOT=[1.0,0.80,0.62],PLUME_PINK=[0.98,0.50,0.84],PLUME_BLUE=[0.52,0.56,1.0];
+const mix3=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
+function plumeUpdate(on){
+  if(!on){for(const b of plume)b.show=false;for(const b of plumeKnots)b.show=false;return;}
+  const now=performance.now()/1000,st2=G.burnerStage(burner,burnerHeld)===2,L=FLAME_LEN*flameL,M=jet.modelMatrix;
+  C.Matrix4.multiplyByPointAsVector(M,AX,glowFwd);C.Cartesian3.normalize(glowFwd,glowFwd);C.Matrix4.multiplyByPoint(M,V(-7,0,-0.05),plumeTmp);
+  C.Cartesian3.normalize(C.Cartesian3.subtract(scene.camera.positionWC,plumeTmp,glowToCam),glowToCam);
+  const along=Math.abs(C.Cartesian3.dot(glowFwd,glowToCam)),thin=clamp(Math.sqrt(1-along*along)*2.5,0.3,1);   /* looking up the axis the sprites overlap, so each gets fainter */
+  for(let i=0;i<PLUME_N;i++){const f=i/(PLUME_N-1),b=plume[i];
+    plumeLocal.x=-7.0-0.25-f*L+Math.sin(now*41+i*1.7)*0.06;plumeLocal.y=Math.sin(now*29+i)*0.03;plumeLocal.z=-0.05+Math.cos(now*33+i*0.9)*0.03;
+    b.position=C.Matrix4.multiplyByPoint(M,plumeLocal,plumeTmp);
+    const sz=(1.25-0.55*f)*(st2?1.08:1)*(1+0.07*Math.sin(now*37+i*2.3));b.width=sz;b.height=sz;
+    const c=f<0.25?mix3(PLUME_HOT,PLUME_PINK,f/0.25):mix3(PLUME_PINK,PLUME_BLUE,(f-0.25)/0.75);
+    b.color=new C.Color(c[0],c[1],c[2],0.5*Math.pow(1-f,0.6)*thin*(0.85+0.15*Math.sin(now*53+i)));b.show=true;}
+  for(let k=0;k<PLUME_D;k++){const b=plumeKnots[k],f=(k+0.6)/(PLUME_D+1)*0.8;   /* evenly spaced, fading down the plume */
+    plumeLocal.x=-7.0-0.25-f*L;plumeLocal.y=0;plumeLocal.z=-0.05;b.position=C.Matrix4.multiplyByPoint(M,plumeLocal,plumeTmp);
+    const sz=(0.62-0.06*k)*(1+0.1*Math.sin(now*47+k*3.1));b.width=sz*1.5;b.height=sz;   /* a little longer than tall, like a diamond seen side on */
+    b.color=new C.Color(1.0,0.93,0.99,(0.95-0.13*k)*thin*(0.8+0.2*Math.sin(now*61+k)));b.show=true;}
+}
 const vapCol=scene.primitives.add(new C.BillboardCollection());
 for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:(()=>{const vb=vapCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false});vb.setImage('puff',smokeImg);return vb;})(),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
 const TINT={white:[1,0.97,0.94],red:[0.96,0.14,0.10],blue:[0.12,0.32,0.96]};
@@ -650,7 +681,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
-const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame,halo,glowCol]);   // never let the probe land on the jet's own effects
+const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame,halo,glowCol,plumeCol]);   // never let the probe land on the jet's own effects
 window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},get replayCam(){return replay?replayCam():null;},get replayPlan(){return replay&&replay.plan?replay.plan.map(x=>x.cam+'@'+x.rate):null;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{const h=scene.sampleHeight(cartoTmp,EXCL);return (h===undefined||h<-40||h>620)?undefined:h;}catch(e){return undefined;}}   // Austin ground is 120-300 m; anything else is a coarse root tile's face, which can sit kilometres off, so it is ignored
 const gTmp=new C.Cartesian3();
@@ -959,10 +990,10 @@ scene.preUpdate.addEventListener(()=>{
   for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=(2.2+Math.sqrt(f)*16)*s.k;s.b.width=sc;s.b.height=sc;const tn=s.tint||TINT.white;const al=0.9*Math.pow(1-f,1.35);s.b.color=new C.Color(tn[0],tn[1],tn[2],al);/* swells fast then holds, dense near the jet, soft tail */s.b.position=toWorld(s.p,smokeTmp);}
   const stage=G.burnerStage(burner,burnerHeld);
   if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(stage===2?0.22:stage===1?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(stage?900:0)+(stage===2?600:0);whine.frequency.value=80+throttle*150+(stage?90:0)+(stage===2?60:0);}
-  flame.show=playing&&!paused&&burner&&cam!=='cockpit';halo.show=flame.show;glow.show=flame.show;if(glow.show){C.Matrix4.multiplyByPoint(jet.modelMatrix,V(-6.75,0,-0.05),glowTmp);glow.position=glowTmp;
+  burnVis=playing&&!paused&&burner&&cam!=='cockpit';flame.show=false;halo.show=false;glow.show=burnVis;plumeUpdate(burnVis);   /* the cone mesh stays built but hidden; the sprite chain draws the exhaust */if(glow.show){C.Matrix4.multiplyByPoint(jet.modelMatrix,V(-6.75,0,-0.05),glowTmp);glow.position=glowTmp;
     C.Matrix4.multiplyByPointAsVector(jet.modelMatrix,AX,glowFwd);C.Cartesian3.normalize(glowFwd,glowFwd);C.Cartesian3.normalize(C.Cartesian3.subtract(scene.camera.positionWC,glowTmp,glowToCam),glowToCam);
-    const behind=Math.max(0,-C.Cartesian3.dot(glowFwd,glowToCam)),st2=G.burnerStage(burner,burnerHeld)===2,gs=(1.25+(st2?0.25:0)+Math.random()*0.06)*(0.55+0.45*behind);   /* full disc from behind, a sliver from the side */
-    glow.width=gs;glow.height=gs;glow.color=new C.Color(1,1,1,0.25+0.75*Math.pow(behind,0.7));}
+    const behind=Math.max(0,-C.Cartesian3.dot(glowFwd,glowToCam)),st2=G.burnerStage(burner,burnerHeld)===2,gs=(1.0+(st2?0.12:0)+Math.random()*0.04)*(0.45+0.55*behind);   /* full disc from behind, a sliver from the side */
+    glow.width=gs;glow.height=gs;glow.color=new C.Color(1,1,1,0.15+0.75*Math.pow(behind,1.2));}
   updateBoomFx(realDt);
   if(playing){
     updateCamera(dt);heatUpdate();window.__lsfClimb=fwd.z;   // test probe
