@@ -230,6 +230,40 @@ describe('pilot assist', () => {
     assert.equal(G.trackFloor(120, 100), 100);
   });
 
+  test('planShots: a short quiet tape is one chase shot at normal speed', () => {
+    const f = [{ t: 0 }, { t: 4 }, { t: 8 }];
+    assert.deepEqual(G.planShots(f), [{ t0: 0, t1: 8, cam: 'chase', rate: 1, side: 1 }]);
+  });
+
+  test('planShots: a long quiet leg is fast-forwarded from a wide camera between chase shots', () => {
+    const sh = G.planShots([{ t: 0 }, { t: 60 }]);
+    assert.deepEqual(sh.map((s) => [s.cam, s.rate]), [['chase', 1], ['high', 3], ['chase', 1]]);
+    assert.equal(sh[0].t0, 0); assert.equal(sh[sh.length - 1].t1, 60);
+  });
+
+  test('planShots: a gate pass gets the gate camera, slowed, framed around the pass', () => {
+    const f = []; for (let t = 0; t <= 30; t += 0.5) f.push({ t, g: t < 20 ? 0 : 1 });
+    const gs = G.planShots(f).find((s) => s.cam === 'gate');
+    assert.deepEqual([gs.t0, gs.t1, gs.rate], [16.8, 21.6, 0.75]);
+  });
+
+  test('planShots: a boom outranks a gate pass at the same moment; the gate keeps the free part before it', () => {
+    const f = []; for (let t = 0; t <= 40; t += 0.5) f.push({ t, g: t < 20 ? 0 : 1, boom: t === 20.5 ? 1 : 0 });
+    const sh = G.planShots(f), orbit = sh.find((s) => s.cam === 'orbit'), gate = sh.find((s) => s.cam === 'gate');
+    assert.deepEqual([orbit.t0, orbit.t1], [19.7, 24.3]);
+    assert.deepEqual([gate.t0, gate.t1], [16.8, 19.7]);
+  });
+
+  test('planShots: shots are contiguous, cover the tape, and consecutive cut-aways alternate sides', () => {
+    const f = []; for (let t = 0; t <= 120; t += 0.5) f.push({ t, g: Math.floor(t / 25), tc: t > 10 && t < 30, b: t > 50 && t < 70, boom: t === 60 ? 1 : 0 });
+    const sh = G.planShots(f);
+    assert.equal(sh[0].t0, 0); assert.equal(sh[sh.length - 1].t1, 120);
+    for (let i = 1; i < sh.length; i++) { assert.equal(sh[i].t0, sh[i - 1].t1); assert.ok(sh[i].t1 > sh[i].t0); }
+    const cuts = sh.filter((s) => s.cam !== 'chase');
+    for (let i = 1; i < cuts.length; i++) assert.notEqual(cuts[i].side, cuts[i - 1].side);
+    assert.ok(new Set(cuts.map((s) => s.cam)).size >= 4);   // gate, ground, side, orbit all appear: no single repeating loop
+  });
+
   test('acceptGround holds a sudden jump as a suspect until a second reading agrees', () => {
     assert.deepEqual(G.acceptGround(undefined, undefined, 150), { ground: 150, suspect: undefined });   // first reading is taken as is
     assert.deepEqual(G.acceptGround(150, undefined, 190), { ground: 190, suspect: undefined });         // 40 m: ordinary terrain

@@ -517,14 +517,14 @@ czm_material czm_getMaterial(czm_materialInput mi){
   float t=mi.st.t,s=mi.st.s;                                                    // t: 0 at the nozzle, 1 at the tip
   float n=vnoise(vec2(s*4.0+u_t*1.5,t*7.0-u_t*14.0));
   float rag=smoothstep(1.0,0.55,t+(n-0.5)*0.5);                                  // ragged, flickering end
-  float dia=pow(0.5+0.5*cos(t*(28.0+6.0*u_stage)-u_t*20.0),8.0)*(1.0-t)*0.9;     // shock diamonds
-  vec3 core=vec3(0.80,0.90,1.0),mid=vec3(1.0,0.62,0.22),tip=vec3(0.85,0.22,0.06);
-  vec3 col=mix(mix(core,mid,smoothstep(0.0,0.30,t)),tip,smoothstep(0.30,1.0,t))+dia*1.6;
-  float rim=pow(abs(dot(normalize(mi.normalEC),vec3(0.0,0.0,1.0))),0.9);          // gas, not paper: the silhouette fades away
-  m.diffuse=col*1.2;m.emission=col*0.5;m.alpha=((0.8-0.6*t)*rag*(0.8+0.2*n)+dia*0.5)*rim*u_k;
+  float dia=pow(0.5+0.5*cos(t*(30.0+6.0*u_stage)-u_t*18.0),10.0)*smoothstep(0.75,0.05,t);   // shock diamonds, faint in daylight
+  vec3 core=vec3(1.0,0.93,0.78),mid=vec3(1.0,0.66,0.36),tip=vec3(0.82,0.58,0.70);           // pale yellow-white at the nozzle, peach, a lilac haze at the end
+  vec3 col=mix(mix(core,mid,smoothstep(0.0,0.35,t)),tip,smoothstep(0.35,1.0,t))+vec3(1.0,0.85,0.7)*dia*0.6;
+  float rim=pow(abs(dot(normalize(mi.normalEC),vec3(0.0,0.0,1.0))),1.3);          // gas, not paper: the silhouette fades away
+  m.diffuse=col;m.emission=col*0.55;m.alpha=clamp(((0.5-0.45*t)*rag*(0.75+0.25*n)+dia*0.25)*rim*u_k*smoothstep(0.0,0.1,t),0.0,1.0);   // the nozzle disc covers the first half metre, so the cone's wide end never draws a ring
   return m;
 }`;
-const flameMat=new C.Material({fabric:{type:'Afterburner',uniforms:{u_t:0.0,u_stage:0.0,u_k:1.0},source:FLAME_SRC}}),haloMat=new C.Material({fabric:{type:'AfterburnerHalo',uniforms:{u_t:0.0,u_stage:0.0,u_k:0.28},source:FLAME_SRC}});
+const flameMat=new C.Material({fabric:{type:'Afterburner',uniforms:{u_t:0.0,u_stage:0.0,u_k:1.0},source:FLAME_SRC}}),haloMat=new C.Material({fabric:{type:'AfterburnerHalo',uniforms:{u_t:0.0,u_stage:0.0,u_k:0.16},source:FLAME_SRC}});
 const flameInst=[new C.GeometryInstance({geometry:new C.CylinderGeometry({length:FLAME_LEN,topRadius:0.1,bottomRadius:0.62,slices:24,vertexFormat:C.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat})})];
 const flameGeom=()=>[new C.GeometryInstance({geometry:new C.CylinderGeometry({length:FLAME_LEN,topRadius:0.1,bottomRadius:0.62,slices:24,vertexFormat:C.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat})})];
 const flame=scene.primitives.add(new C.Primitive({geometryInstances:flameInst,appearance:new C.MaterialAppearance({material:flameMat,translucent:true,closed:false,flat:true,materialSupport:C.MaterialAppearance.MaterialSupport.TEXTURED}),asynchronous:false,allowPicking:true}));flame.show=false;   // pickable so the ground probe can exclude it
@@ -553,7 +553,7 @@ void main(){
   float w=smoothstep(r,r*0.25,d)*(1.0-h*0.6);
   vec2 k=vec2(70.0*asp,70.0);
   vec2 n=vec2(vnoise(uv*k+vec2(0.0,-u_t*8.0)),vnoise(uv*k+vec2(5.2,-u_t*7.0)))-0.5;
-  out_FragColor=vec4(texture(colorTexture,uv+n*w*0.014).rgb,1.0);
+  out_FragColor=vec4(texture(colorTexture,uv+n*w*0.010).rgb,1.0);
 }`;
 if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:HEAT_FS,uniforms:{u_a:()=>heatA,u_b:()=>heatB,u_r:()=>heatR,u_t:()=>performance.now()/1000,u_on:()=>heatOn}}));
 function heatUpdate(){if(MOBILE||!flame.show){heatOn=0;return;}const M=jet.modelMatrix;
@@ -591,7 +591,7 @@ void main(){
 }`;
 if(!MOBILE)scene.postProcessStages.add(new C.PostProcessStage({fragmentShader:RIPPLE_FS,uniforms:{u_center:()=>boomUV,u_t:()=>Math.min(1,boomAge/1.2),u_on:()=>(boomAge>=0&&boomAge<1.2)?1.0:0.0}}));
 function placeJet(){jet.modelMatrix=C.Matrix4.fromTranslationQuaternionRotationScale(worldPos,worldQ,ONE,new C.Matrix4());
-  const now=performance.now()/1000,st=G.burnerStage(burner,burnerHeld),want=burner?(st===2?1.5:1.0):0.6;flameL+=(want-flameL)*0.12;const flick=1+Math.sin(now*37)*0.04+Math.sin(now*23.7)*0.03;   // the plume grows with the second stage and never sits still
+  const now=performance.now()/1000,st=G.burnerStage(burner,burnerHeld),want=burner?(st===2?1.2:0.85):0.5;flameL+=(want-flameL)*0.12;const flick=1+Math.sin(now*37)*0.04+Math.sin(now*23.7)*0.03;   // the plume grows with the second stage and never sits still
   flameMat.uniforms.u_t=now;flameMat.uniforms.u_stage=st;haloMat.uniforms.u_t=now*0.8;haloMat.uniforms.u_stage=st;C.Matrix4.fromScale(V(1,1,flameL*flick),flameScale);
   flame.modelMatrix=C.Matrix4.multiply(C.Matrix4.multiply(C.Matrix4.multiply(jet.modelMatrix,FLAME_BASE,flameM1),flameScale,flameM2),FLAME_SHIFT,new C.Matrix4());
   halo.modelMatrix=C.Matrix4.multiply(C.Matrix4.multiply(C.Matrix4.multiply(C.Matrix4.multiply(jet.modelMatrix,FLAME_BASE,flameM1),HALO_SCALE,flameM2),flameScale,flameM1),FLAME_SHIFT,new C.Matrix4());if(jetModel)jetModel.modelMatrix=C.Matrix4.multiply(jet.modelMatrix,JET_FIX,new C.Matrix4());}
@@ -612,7 +612,9 @@ const smokeCol=scene.primitives.add(new C.BillboardCollection());
 const SMOKEN=window.__lsfFakeTiles?320:MOBILE?600:1500,smoke=[];   // three streams at 220 m/s put ~300 puffs a second into the air; the pool has to hold three seconds of that. The test hook keeps it small: software-rendered Chromium cannot fill 1,500 translucent sprites
 for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,rotation:Math.random()*6.283,color:new C.Color(1,0.95,0.9,0),show:false});b.setImage('puff',smokeImg);smoke.push({b,age:9,life:1,k:0.85+Math.random()*0.3,p:V(0,0,0),v:V(0,0,0)});}
 let smokeIdx=0;
-const glowCol=scene.primitives.add(new C.BillboardCollection());const glow=glowCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:2.4,height:2.4,color:new C.Color(1,0.78,0.45,0.6),show:false});glow.setImage('puff',smokeImg);const glowTmp=new C.Cartesian3();   // the nozzle glow while the burner is lit
+const nozzleImg=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const r=g.createRadialGradient(64,64,0,64,64,64);
+  r.addColorStop(0,'rgba(255,250,225,1)');r.addColorStop(0.28,'rgba(255,214,120,1)');r.addColorStop(0.5,'rgba(255,140,40,.9)');r.addColorStop(0.62,'rgba(255,110,30,.35)');r.addColorStop(1,'rgba(255,90,20,0)');g.fillStyle=r;g.fillRect(0,0,128,128);return c;})();
+const glowCol=scene.primitives.add(new C.BillboardCollection());const glow=glowCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:2.4,height:2.4,color:new C.Color(1,1,1,1),show:false});glow.setImage('nozzle',nozzleImg);const glowTmp=new C.Cartesian3(),glowFwd=new C.Cartesian3(),glowToCam=new C.Cartesian3();   // the hot nozzle while the burner is lit
 const vapCol=scene.primitives.add(new C.BillboardCollection());
 for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:(()=>{const vb=vapCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false});vb.setImage('puff',smokeImg);return vb;})(),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
 const TINT={white:[1,0.97,0.94],red:[0.96,0.14,0.10],blue:[0.12,0.32,0.96]};
@@ -649,7 +651,7 @@ LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toU
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
 const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame,halo,glowCol]);   // never let the probe land on the jet's own effects
-window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
+window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},get replayCam(){return replay?replayCam():null;},get replayPlan(){return replay&&replay.plan?replay.plan.map(x=>x.cam+'@'+x.rate):null;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{const h=scene.sampleHeight(cartoTmp,EXCL);return (h===undefined||h<-40||h>620)?undefined:h;}catch(e){return undefined;}}   // Austin ground is 120-300 m; anything else is a coarse root tile's face, which can sit kilometres off, so it is ignored
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}
@@ -877,46 +879,61 @@ function sonicBoom(kind){boomKind=kind||1;boomFlag=boomKind;boomSound();boomAge=
   const sp=$('splash');sp.textContent=boomKind===2?'MACH 2':'MACH 1';sp.classList.remove('on');void sp.offsetWidth;sp.classList.add('on');
   window.__lsfBooms=(window.__lsfBooms||0)+1;}
 
-// ---------- instant replay: the last minute of flight, played back from cinematic cameras ----------
-// Flight state is recorded per frame (position, attitude, speed, smoke, burner, booms) and played back through the same
-// effects code, so the smoke, plumes and vapor are re-created rather than stored. T starts it; it hands the stick back when the tape runs out.
-const REPLAY_CAMS=['chase','ground','chase','side','chase','orbit'];   // back to the chase between cut-aways, like a broadcast
+// ---------- instant replay: the last three minutes of flight, cut like a broadcast ----------
+// Flight state is recorded per frame (position, attitude, speed, smoke, burner, booms, gate) and played back through the same
+// effects code, so the smoke, plumes and vapor are re-created rather than stored. G.planShots reads the tape and cuts it:
+// a slowed gate camera at each ring, an orbit through each sonic boom, a ground camera when the smoke comes on, an abeam shot
+// when the burner lights, the chase view between them and a fast-forwarded wide shot over long quiet legs.
+// T starts it; it hands the stick back when the tape runs out. Scripts can pass {cams, per} for a fixed rotation instead.
 const REPLAY_DWELL={chase:9,ground:12,side:7,orbit:9};
 const qa=new C.Quaternion(),qb=new C.Quaternion();
 function record(){REC.push({t:T,p:[pos.x,pos.y,pos.z],q:[q.x,q.y,q.z,q.w],s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,boom:boomFlag,g:gate,e:elapsed});boomFlag=0;while(REC.length&&REC[0].t<T-180)REC.shift();}
 function startReplay(frames,opts){frames=frames||REC.slice();opts=opts||{};if(frames.length<2||frames[frames.length-1].t-frames[0].t<1){toast('Nothing to replay yet');return false;}
-  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||REPLAY_CAMS,camI:0,camT:0,passT:0,per:opts.per,anchor:null,orbA:0,onEnd:opts.onEnd,
+  replay={f:frames,i:0,t:frames[0].t,lastBoomI:-1,cams:opts.cams||['chase'],camI:0,camT:0,passT:0,per:opts.per,anchor:null,orbA:0,onEnd:opts.onEnd,
+    plan:opts.cams?null:G.planShots(frames,{firstSide:Math.random()<0.5?-1:1}),si:0,rate:1,fov:BASE_FOV,override:null,
     saved:{p:C.Cartesian3.clone(pos),q:C.Quaternion.clone(q),s:speed,th:throttle,b:burner,sm:smokeOn,tc:tricolor,cam,bankTarget,gate,elapsed}};
-  mnv=null;lowWarn=false;boomAge=-1;$('pCam').textContent=replay.cams[0]==='chase'?'Chase':'Replay';toast('Instant replay');return true;}
+  if(replay.plan&&!replay.plan.length)replay.plan=null;
+  mnv=null;lowWarn=false;boomAge=-1;replayPill();toast('Instant replay');return true;}
+function replayCam(){const r=replay;if(!r)return 'chase';if(r.override)return r.override;return r.plan?r.plan[r.si].cam:r.cams[r.camI];}
+function replaySide(){const r=replay;return r&&r.plan&&!r.override?r.plan[r.si].side:1;}
+function replayPill(){$('pCam').textContent=replayCam()==='chase'?'Chase':'Replay';}
 function endReplay(){if(!replay)return;const s=replay.saved,onEnd=replay.onEnd;replay=null;C.Cartesian3.clone(s.p,pos);C.Quaternion.clone(s.q,q);speed=s.s;throttle=s.th;burner=s.b;smokeOn=s.sm;tricolor=s.tc;cam=s.cam;bankTarget=s.bankTarget;gate=s.gate;elapsed=s.elapsed;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);boomAge=-1;boomFlag=0;$('pCam').textContent=cam==='chase'?'Chase':'Cockpit';toast('Live');if(onEnd)onEnd();}
-function setReplayCam(name){if(!replay)return;const i=replay.cams.indexOf(name);if(i<0)replay.cams.push(name);replay.camI=i<0?replay.cams.length-1:i;replay.camT=0;replay.anchor=null;$('pCam').textContent=name==='chase'?'Chase':'Replay';}
-function replayStep(dt){const r=replay;r.t+=dt;const f=r.f;while(r.i<f.length-1&&f[r.i+1].t<=r.t)r.i++;if(r.i>=f.length-1){endReplay();return;}
+function setReplayCam(name){if(!replay)return;if(replay.plan){replay.override=name;}else{const i=replay.cams.indexOf(name);if(i<0)replay.cams.push(name);replay.camI=i<0?replay.cams.length-1:i;}replay.camT=0;replay.anchor=null;replayPill();}
+function replayStep(dt){const r=replay;
+  if(r.plan&&!r.override){const k=Math.min(1,dt*4);r.rate+=(r.plan[r.si].rate-r.rate)*k;}else r.rate=1;   /* pace eases between shots instead of jumping */
+  const sdt=dt*r.rate;r.t+=sdt;const f=r.f;while(r.i<f.length-1&&f[r.i+1].t<=r.t)r.i++;if(r.i>=f.length-1){endReplay();return;}
   const a=f[r.i],b=f[r.i+1],u=clamp((r.t-a.t)/Math.max(1e-6,b.t-a.t),0,1);
   pos.x=a.p[0]+(b.p[0]-a.p[0])*u;pos.y=a.p[1]+(b.p[1]-a.p[1])*u;pos.z=a.p[2]+(b.p[2]-a.p[2])*u;
   qa.x=a.q[0];qa.y=a.q[1];qa.z=a.q[2];qa.w=a.q[3];qb.x=b.q[0];qb.y=b.q[1];qb.z=b.q[2];qb.w=b.q[3];C.Quaternion.slerp(qa,qb,u,q);
-  speed=a.s+(b.s-a.s)*u;throttle=a.th;burner=a.b;burnerHeld=burner?burnerHeld+dt:0;smokeOn=a.sm;tricolor=a.tc;
+  speed=a.s+(b.s-a.s)*u;throttle=a.th;burner=a.b;burnerHeld=burner?burnerHeld+sdt:0;smokeOn=a.sm;tricolor=a.tc;
   if(a.g!==undefined&&a.g!==gate){gate=a.g;GATES.forEach((g,i)=>g.ent.show=i>=gate&&i<=gate+1);}if(a.e!==undefined)elapsed=a.e;   // the HUD and the rings show the recorded moment
   if(a.boom&&r.lastBoomI!==r.i){r.lastBoomI=r.i;sonicBoom(a.boom);boomFlag=0;}
-  body(AX,fwd);body(AY,left);body(AZ,up);trail(dt);
+  body(AX,fwd);body(AY,left);body(AZ,up);trail(sdt);
+  if(r.plan){let cut=false;while(r.si<r.plan.length-1&&r.t>=r.plan[r.si].t1){r.si++;cut=true;}if(cut&&!r.override){r.anchor=null;replayPill();}return;}
   const cm=r.cams[r.camI];let dwell=r.per||REPLAY_DWELL[cm]||7;if(cm==='ground'&&r.anchor&&r.anchor.passed){r.passT+=dt;if(r.passT>1.2)dwell=0;}   // watch it go by for a beat, then cut
   r.camT+=dt;if(r.camT>=dwell){r.camT=0;r.passT=0;r.camI=(r.camI+1)%r.cams.length;r.anchor=null;$('pCam').textContent=r.cams[r.camI]==='chase'?'Chase':'Replay';}}
-function replayCamera(dt){const r=replay,m=r.cams[r.camI];
-  if(m==='orbit'){r.orbA+=dt*0.2;const R=46+Math.sin(r.orbA*0.7)*10;camPos.x=pos.x+Math.cos(r.orbA)*R;camPos.y=pos.y+Math.sin(r.orbA)*R;camPos.z=pos.z+12;}
-  else if(m==='gate'){if(!r.anchor){const g=GATES[Math.min(gate,GATES.length-1)];r.anchor={x:g.local.x+fwd.x*140-left.x*110,y:g.local.y+fwd.y*140-left.y*110,z:g.local.z+24};}camPos.x=r.anchor.x;camPos.y=r.anchor.y;camPos.z=r.anchor.z;}
-  else if(m==='side'){const hx=-fwd.y,hy=fwd.x,hl=Math.hypot(hx,hy)||1;camPos.x=pos.x+hx/hl*38-fwd.x*4;camPos.y=pos.y+hy/hl*38-fwd.y*4;camPos.z=pos.z+8;}   // abeam, level with the horizon
-  else{ // ground: a fixed spot ahead and off to one side, re-placed once the jet has flown past it
-    if(!r.anchor||r.anchor.passed){const side=1;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fwd.x*260+left.x*75*side,y:pos.y+fwd.y*260+left.y*75*side,z:Math.max(gz+16,pos.z-70),side,passed:false};}
-    const an=r.anchor,along=(pos.x-an.x)*fwd.x+(pos.y-an.y)*fwd.y;if(along>170||Math.hypot(pos.x-an.x,pos.y-an.y)>1400)an.passed=true;camPos.x=an.x;camPos.y=an.y;camPos.z=an.z;}
+function replayCamera(dt){const r=replay,m=replayCam(),side=replaySide();
+  const fhl=Math.hypot(fwd.x,fwd.y)||1,fx=fwd.x/fhl,fy=fwd.y/fhl;   /* level heading, so a rolling jet does not swing the static cameras */
+  let fixed=false;
+  if(m==='orbit'){if(!r.anchor)r.anchor={a:Math.atan2(fy,fx)+side*1.1};r.anchor.a-=side*dt*0.35;const R=40;camPos.x=pos.x+Math.cos(r.anchor.a)*R;camPos.y=pos.y+Math.sin(r.anchor.a)*R;camPos.z=pos.z+8;}
+  else if(m==='high'){camPos.x=pos.x-fx*85+fy*18*side;camPos.y=pos.y-fy*85-fx*18*side;camPos.z=pos.z+38;}   /* wide, from above and behind: the city scrolls by */
+  else if(m==='gate'){if(!r.anchor){const g=GATES[Math.min(gate,GATES.length-1)],sd=g.low?1:side;r.anchor={x:g.local.x+fx*140+fy*110*sd,y:g.local.y+fy*140-fx*110*sd,z:g.local.z+24};}camPos.x=r.anchor.x;camPos.y=r.anchor.y;camPos.z=r.anchor.z;fixed=true;}
+  else if(m==='side'){camPos.x=pos.x+fy*32*side+fx*3;camPos.y=pos.y-fx*32*side+fy*3;camPos.z=pos.z+5;}   /* abeam, level with the horizon */
+  else{ /* ground: a spot ahead and to one side, placed so the jet passes it mid-shot */
+    if(!r.anchor||(!r.plan&&r.anchor.passed)){const lead=r.plan&&!r.override?clamp(speed*(r.plan[r.si].t1-r.plan[r.si].t0)*0.45,150,700):260;const gz=groundH!==undefined?groundH:pos.z-60;r.anchor={x:pos.x+fx*lead+fy*75*side,y:pos.y+fy*lead-fx*75*side,z:Math.max(gz+16,pos.z-55),passed:false};}
+    const an=r.anchor,along=(pos.x-an.x)*fx+(pos.y-an.y)*fy;if(along>170||Math.hypot(pos.x-an.x,pos.y-an.y)>1400)an.passed=true;camPos.x=an.x;camPos.y=an.y;camPos.z=an.z;fixed=true;}
   if(groundH!==undefined&&camPos.z<groundH+4)camPos.z=groundH+4;
-  toWorld(camPos,camDest);const d=V(pos.x-camPos.x,pos.y-camPos.y,pos.z-camPos.z);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);
-  C.Cartesian3.normalize(camDir,camDir);C.Cartesian3.normalize(camUp,camUp);scene.camera.frustum.fov=BASE_FOV;scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});}
+  toWorld(camPos,camDest);const d=V(pos.x-camPos.x,pos.y-camPos.y,pos.z-camPos.z);const dist=C.Cartesian3.magnitude(d);C.Cartesian3.normalize(d,d);toWorldVec(d,camDir);toWorldVec(AZ,camUp);
+  C.Cartesian3.normalize(camDir,camDir);C.Cartesian3.normalize(camUp,camUp);
+  const want=fixed?clamp(2*Math.atan(22/Math.max(1,dist)),C.Math.toRadians(14),BASE_FOV):BASE_FOV;r.fov+=(want-r.fov)*Math.min(1,dt*3);   /* fixed cameras zoom like a long lens, so the jet stays a readable size */
+  scene.camera.frustum.fov=r.fov;scene.camera.setView({destination:camDest,orientation:{direction:camDir,up:camUp}});}
 
 // ---------- camera ----------
 const camDest=new C.Cartesian3(),camDir=new C.Cartesian3(),camUp=new C.Cartesian3(),lookL=new C.Cartesian3(),desired=new C.Cartesian3();
 function updateCamera(dt){
   body(AX,fwd);body(AZ,up);
   const bodyVisible=cam!=='cockpit';partEntities.forEach(e=>e.show=bodyVisible&&!jetModel);if(jetModel)jetModel.show=bodyVisible;   // the hand-built jet stands in until the glTF is ready
-  if(replay&&replay.cams[replay.camI]!=='chase'){replayCamera(dt);return;}
+  if(replay&&replayCam()!=='chase'){replayCamera(dt);return;}
   if(cam==='cockpit'){desired.x=pos.x+fwd.x*2.5+up.x*1.3;desired.y=pos.y+fwd.y*2.5+up.y*1.3;desired.z=pos.z+fwd.z*2.5+up.z*1.3;C.Cartesian3.clone(desired,camPos);toWorld(camPos,camDest);toWorldVec(fwd,camDir);toWorldVec(up,camUp);}
   else{const back=30+clamp((speed-200)/500,0,1)*18;desired.x=-fwd.x*back+up.x*6.5;desired.y=-fwd.y*back+up.y*6.5;desired.z=-fwd.z*back+up.z*6.5;   // the offset from the jet eases; the jet itself is never chased, so it stays the same size at Mach 2
     const k=crashed>0?0:1-Math.exp(-dt*5);camOff.x+=(desired.x-camOff.x)*k;camOff.y+=(desired.y-camOff.y)*k;camOff.z+=(desired.z-camOff.z)*k;camPos.x=pos.x+camOff.x;camPos.y=pos.y+camOff.y;camPos.z=pos.z+camOff.z;
@@ -942,7 +959,10 @@ scene.preUpdate.addEventListener(()=>{
   for(const s of smoke){if(!s.b.show)continue;s.age+=dt;if(s.age>s.life){s.b.show=false;continue;}const f=s.age/s.life;s.p.x+=s.v.x*dt;s.p.y+=s.v.y*dt;s.p.z+=s.v.z*dt;const sc=(2.2+Math.sqrt(f)*16)*s.k;s.b.width=sc;s.b.height=sc;const tn=s.tint||TINT.white;const al=0.9*Math.pow(1-f,1.35);s.b.color=new C.Color(tn[0],tn[1],tn[2],al);/* swells fast then holds, dense near the jet, soft tail */s.b.position=toWorld(s.p,smokeTmp);}
   const stage=G.burnerStage(burner,burnerHeld);
   if(AC&&engGain){engGain.gain.value=(playing&&!paused&&soundOn&&crashed<=0)?0.07+throttle*0.16+(stage===2?0.22:stage===1?0.12:0):0;engFilter.frequency.value=260+throttle*1900+(stage?900:0)+(stage===2?600:0);whine.frequency.value=80+throttle*150+(stage?90:0)+(stage===2?60:0);}
-  flame.show=playing&&!paused&&burner&&cam!=='cockpit';halo.show=flame.show;glow.show=flame.show;if(glow.show){C.Matrix4.multiplyByPoint(jet.modelMatrix,V(-6.6,0,-0.05),glowTmp);glow.position=glowTmp;const gs=2.2+(G.burnerStage(burner,burnerHeld)===2?0.8:0)+Math.random()*0.3;glow.width=gs;glow.height=gs;}
+  flame.show=playing&&!paused&&burner&&cam!=='cockpit';halo.show=flame.show;glow.show=flame.show;if(glow.show){C.Matrix4.multiplyByPoint(jet.modelMatrix,V(-6.75,0,-0.05),glowTmp);glow.position=glowTmp;
+    C.Matrix4.multiplyByPointAsVector(jet.modelMatrix,AX,glowFwd);C.Cartesian3.normalize(glowFwd,glowFwd);C.Cartesian3.normalize(C.Cartesian3.subtract(scene.camera.positionWC,glowTmp,glowToCam),glowToCam);
+    const behind=Math.max(0,-C.Cartesian3.dot(glowFwd,glowToCam)),st2=G.burnerStage(burner,burnerHeld)===2,gs=(1.25+(st2?0.25:0)+Math.random()*0.06)*(0.55+0.45*behind);   /* full disc from behind, a sliver from the side */
+    glow.width=gs;glow.height=gs;glow.color=new C.Color(1,1,1,0.25+0.75*Math.pow(behind,0.7));}
   updateBoomFx(realDt);
   if(playing){
     updateCamera(dt);heatUpdate();window.__lsfClimb=fwd.z;   // test probe

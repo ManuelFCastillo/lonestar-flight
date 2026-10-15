@@ -99,6 +99,48 @@
   function trackFloor(prev, h) { return prev === undefined ? h : Math.min(h, prev + 1.5); }
   // A ground reading that jumps more than `jump` metres from the current one is held as a suspect and only accepted when the
   // next reading agrees with it. Real cliffs pass one probe later; a coarse tile's face under a jet at Mach does not.
+  // Instant-replay director. Reads the recorded tape for moments worth a cut (sonic booms, gate passes, smoke coming on, the
+  // burner lighting), gives each its own camera and pace, and fills the stretches between with the chase view, fast-forwarding
+  // long dull legs from a high wide camera. Returns contiguous shots {t0, t1, cam, rate, side} covering the whole tape.
+  const SHOT_RULES = { boom: { pri: 4, cam: 'orbit', pre: 0.8, post: 3.8, rate: 0.6 }, gate: { pri: 3, cam: 'gate', pre: 3.2, post: 1.6, rate: 0.75 },
+    smoke: { pri: 2, cam: 'ground', pre: -1.2, post: 6.0, rate: 1 }, burner: { pri: 1, cam: 'side', pre: 0.4, post: 3.4, rate: 1 } };
+  function planShots(frames, o) {
+    o = o || {}; const FF_MIN = o.ffMin || 14, FF = o.ff || 3, MIN_SHOT = 2;
+    if (!frames || frames.length < 2) return [];
+    const t0 = frames[0].t, tE = frames[frames.length - 1].t, ev = [];
+    for (let i = 1; i < frames.length; i++) {
+      const a = frames[i - 1], b = frames[i];
+      if (b.boom) ev.push(['boom', b.t]);
+      if (b.g !== undefined && a.g !== undefined && b.g > a.g) ev.push(['gate', b.t]);
+      if (b.tc && !a.tc) ev.push(['smoke', b.t]);
+      if (b.b && !a.b) ev.push(['burner', b.t]);
+    }
+    const placed = [];
+    ev.map(([k, t]) => ({ k, t, ...SHOT_RULES[k] })).sort((x, y) => y.pri - x.pri || x.t - y.t).forEach((e) => {
+      let lo = Math.max(t0, e.t - e.pre), hi = Math.min(tE, e.t + e.post);
+      for (const p of placed) {                       // keep the larger free piece beside each higher-priority shot
+        if (p.t1 <= lo || p.t0 >= hi) continue;
+        if (p.t0 - lo >= hi - p.t1) hi = Math.min(hi, p.t0); else lo = Math.max(lo, p.t1);
+      }
+      if (hi - lo >= MIN_SHOT) placed.push({ t0: lo, t1: hi, cam: e.cam, rate: e.rate });
+    });
+    placed.sort((x, y) => x.t0 - y.t0);
+    const out = []; let cur = t0, ffN = 0;
+    const fill = (a, b) => {
+      if (b - a <= 0.05) return;
+      if (b - a < FF_MIN) { out.push({ t0: a, t1: b, cam: 'chase', rate: 1 }); return; }
+      out.push({ t0: a, t1: a + 3, cam: 'chase', rate: 1 });
+      out.push({ t0: a + 3, t1: b - 3, cam: ffN++ % 2 ? 'side' : 'high', rate: FF });
+      out.push({ t0: b - 3, t1: b, cam: 'chase', rate: 1 });
+    };
+    for (const p of placed) { fill(cur, p.t0); out.push(p); cur = p.t1; }
+    fill(cur, tE);
+    const merged = [];                                 // neighbours with the same camera and pace become one shot
+    for (const sh of out) { const m = merged[merged.length - 1]; if (m && m.cam === sh.cam && m.rate === sh.rate) m.t1 = sh.t1; else merged.push({ ...sh }); }
+    let k = o.firstSide === -1 ? 1 : 0;               // alternate sides so consecutive cut-aways do not repeat the same angle
+    for (const sh of merged) sh.side = sh.cam === 'chase' ? 1 : (k++ % 2 ? -1 : 1);
+    return merged;
+  }
   function acceptGround(cur, suspect, h, jump, agree) {
     jump = jump === undefined ? 120 : jump; agree = agree === undefined ? 30 : agree;
     if (cur === undefined || Math.abs(h - cur) <= jump) return { ground: h, suspect: undefined };
@@ -110,5 +152,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, acceptGround, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, acceptGround, planShots, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
 });
