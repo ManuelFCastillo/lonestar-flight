@@ -229,6 +229,15 @@ describe('pilot assist', () => {
     assert.equal(G.trackFloor(120, 300), 121.5);   // a rooftop under the jet does not become the floor
     assert.equal(G.trackFloor(120, 100), 100);
   });
+
+  test('acceptGround holds a sudden jump as a suspect until a second reading agrees', () => {
+    assert.deepEqual(G.acceptGround(undefined, undefined, 150), { ground: 150, suspect: undefined });   // first reading is taken as is
+    assert.deepEqual(G.acceptGround(150, undefined, 190), { ground: 190, suspect: undefined });         // 40 m: ordinary terrain
+    const spike = G.acceptGround(150, undefined, 600);                                                  // a coarse tile face 450 m up
+    assert.deepEqual(spike, { ground: 150, suspect: 600 });
+    assert.deepEqual(G.acceptGround(150, 600, 155), { ground: 155, suspect: undefined });               // the next probe is normal: spike dropped
+    assert.deepEqual(G.acceptGround(150, 600, 590), { ground: 590, suspect: undefined });               // two readings agree: it was a cliff
+  });
 });
 
 describe('preferences', () => {

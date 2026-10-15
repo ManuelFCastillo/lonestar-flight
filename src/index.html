@@ -553,7 +553,7 @@ const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.he
   const blob=(x,y,r,a)=>{const gr=g.createRadialGradient(x,y,r*0.08,x,y,r);gr.addColorStop(0,'rgba(255,255,255,'+a+')');gr.addColorStop(0.45,'rgba(255,255,255,'+(a*0.55)+')');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);};
   blob(64,64,56,0.9);blob(44,52,30,0.8);blob(84,50,26,0.75);blob(56,86,28,0.7);blob(86,82,24,0.65);blob(66,40,20,0.6);return c;})();
 const smokeCol=scene.primitives.add(new C.BillboardCollection());
-const SMOKEN=MOBILE?600:1500,smoke=[];   // three streams at 220 m/s put ~300 puffs a second into the air; the pool has to hold three seconds of that
+const SMOKEN=window.__lsfFakeTiles?320:MOBILE?600:1500,smoke=[];   // three streams at 220 m/s put ~300 puffs a second into the air; the pool has to hold three seconds of that. The test hook keeps it small: software-rendered Chromium cannot fill 1,500 translucent sprites
 for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,rotation:Math.random()*6.283,color:new C.Color(1,0.95,0.9,0),show:false});b.setImage('puff',smokeImg);smoke.push({b,age:9,life:1,k:0.85+Math.random()*0.3,p:V(0,0,0),v:V(0,0,0)});}
 let smokeIdx=0;
 const vapCol=scene.primitives.add(new C.BillboardCollection());
@@ -602,9 +602,9 @@ function resolveAnchors(){for(let k=0;k<3;k++){const a=ANCHORS[anchorCursor];anc
 // ---------- state ----------
 const K={};let mode='tour',playing=false,paused=false,crashed=0,cam='chase',smokeOn=false,invert=false,soundOn=true,assist=true,assistAct=0,mnv=null,mnvCool=0,burner=false,burnerHeld=0,shake=0,musicOn=true,bankTarget=0,spaceDownAt=0,spaceHeld=0,tricolor=false,lowWarn=false,lastBeep=-9,lastVoice=-9,replay=null,boomFlag=0,autopilot=false;
 const REC=[];   // the last three minutes of flight, one entry per frame, for the instant replay
-let gate=0,elapsed=0,finished=false,groundH=undefined,floorH=undefined,groundTick=0;
+let gate=0,elapsed=0,finished=false,groundH=undefined,groundSus=undefined,floorH=undefined,groundTick=0,lowFrames=0;
 const camPos=V(0,0,0),camOff=V(-30,0,6.5);
-function spawn(){mnv=null;mnvCool=0;floorH=undefined;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
+function spawn(){mnv=null;mnvCool=0;floorH=undefined;groundSus=undefined;lowFrames=0;burnerHeld=0;boomAge=-1;shake=0;bankTarget=0;C.Cartesian3.clone(SPAWN.local,pos);C.Quaternion.clone(C.Quaternion.IDENTITY,q);speed=150;throttle=0.6;camPos.x=pos.x-40;camPos.y=pos.y;camPos.z=pos.z+8;}
 spawn();toWorld(pos,worldPos);C.Quaternion.multiply(enuQ,q,worldQ);placeJet();
 
 // ---------- input ----------
@@ -797,11 +797,11 @@ function step(dt){
   if(bnd!=='ok')rotWorld(AZ,((pos.x*fwd.y-pos.y*fwd.x)>0?-1:1)*0.5*dt);
   if(bnd==='respawn'){spawn();toast('Back over Zilker');}
   // ground: sample the tiles under the jet every few frames
-  groundTick++;if(groundTick%4===0){const c=C.Cartographic.fromCartesian(toWorld(pos,tmpV));const h=sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));if(h!==undefined){groundH=h;floorH=G.trackFloor(floorH,h);}}   // floorH rises slowly: it tracks terrain, not rooftops
+  groundTick++;if(groundTick%4===0){const c=C.Cartographic.fromCartesian(toWorld(pos,tmpV));const h=sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));if(h!==undefined){const ag=G.acceptGround(groundH,groundSus,h);groundSus=ag.suspect;if(ag.ground!==groundH){groundH=ag.ground;floorH=G.trackFloor(floorH,groundH);}}}   // floorH rises slowly: it tracks terrain, not rooftops; a reading that jumps is held until a second one agrees
   const agl=groundH===undefined?999:pos.z-groundH;
   if(assist){ // hard floor on the terrain only; a building you fail to dodge is passed through, not climbed over
     if(floorH!==undefined&&pos.z<floorH+5)pos.z=floorH+5;
-  }else if(agl<4){crash();return;}
+  }else{lowFrames=agl<4?lowFrames+1:0;if(lowFrames>=3){lowFrames=0;crash();return;}}   // three frames on the ground, not one glitched reading
   lowWarn=groundH!==undefined&&agl<26&&fwd.z<0.08;   // ground proximity: the beeper and the PULL UP flasher
   spaceHeld=K.Space?spaceHeld+dt:0;tricolor=spaceHeld>=0.45;
   trail(dt);

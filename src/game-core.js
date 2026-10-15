@@ -97,10 +97,18 @@
   }
   // The hard floor follows terrain, not rooftops: it may drop instantly but rise only 1.5 m per sample.
   function trackFloor(prev, h) { return prev === undefined ? h : Math.min(h, prev + 1.5); }
+  // A ground reading that jumps more than `jump` metres from the current one is held as a suspect and only accepted when the
+  // next reading agrees with it. Real cliffs pass one probe later; a coarse tile's face under a jet at Mach does not.
+  function acceptGround(cur, suspect, h, jump, agree) {
+    jump = jump === undefined ? 120 : jump; agree = agree === undefined ? 30 : agree;
+    if (cur === undefined || Math.abs(h - cur) <= jump) return { ground: h, suspect: undefined };
+    if (suspect !== undefined && Math.abs(h - suspect) <= agree) return { ground: h, suspect: undefined };
+    return { ground: cur, suspect: h };
+  }
 
   // ---- preferences ----
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, acceptGround, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
 });
