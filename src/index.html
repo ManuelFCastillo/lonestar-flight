@@ -431,8 +431,8 @@ void main(){
   float lum=dot(c.rgb,vec3(0.299,0.587,0.114)),mx=max(c.r,max(c.g,c.b)),sat=(mx-min(c.r,min(c.g,c.b)))/max(mx,1e-3);
   float wet=step(c.r*1.08,min(c.g,c.b))*(1.0-smoothstep(0.22,0.42,lum));   // Lady Bird Lake and the river: dark teal
   float dry=1.0-wet;
-  float pave=(1.0-smoothstep(0.12,0.3,sat))*smoothstep(0.1,0.24,lum)*veg*dry;  // roads, lots and roofs read grey in the photos
-  float planar=1.0-smoothstep(0.12,0.45,length(fwidth(nl)));                   // facades are flat; cliffs and canopies are not
+  float pave=(1.0-smoothstep(0.12,0.3,sat))*smoothstep(0.22,0.36,lum)*veg*dry;  // roads, lots and roofs read light grey in the photos; shaded foliage is darker
+  float planar=1.0-smoothstep(0.05,0.22,length(fwidth(nl)));                   // facades are flat; cliffs and canopies are not
   float wall=(1.0-smoothstep(0.15,0.5,abs(nl.z)))*veg*dry*planar;
   float along=abs(nl.y)>abs(nl.x)?pl.x:pl.y;
   vec2 wuv=vec2(along/3.0,pl.z/3.4);
@@ -715,7 +715,7 @@ function updateBats(t){for(let i=0;i<BATN;i++){const bt=bats[i],p=(t*0.03+i/BATN
 
 // gates as thick flat rings with a dark outline, twenty-sided: the 16-bit look
 const RING_EDGE=C.Color.fromCssColorString('#2b1a06');
-const RING=new C.PolylineOutlineMaterialProperty({color:GOLD,outlineColor:RING_EDGE,outlineWidth:5}),RING_DIM=new C.PolylineOutlineMaterialProperty({color:GOLD.withAlpha(0.4),outlineColor:RING_EDGE.withAlpha(0.4),outlineWidth:5});
+const RING=new C.PolylineOutlineMaterialProperty({color:GOLD,outlineColor:RING_EDGE,outlineWidth:5}),RING_DIM=new C.PolylineOutlineMaterialProperty({color:C.Color.fromCssColorString('#8a6f1f'),outlineColor:RING_EDGE,outlineWidth:5});   // solid, so it writes depth and the night pass can light it; darker gold reads as 'next'
 function ringPositions(g,i){let dx,dy;if(g.ax!==undefined){dx=g.ax;dy=g.ay;}else{const nx=GATES[i+1]||GATES[i-1];dx=nx.local.x-g.local.x;dy=nx.local.y-g.local.y;}const L=Math.hypot(dx,dy)||1;const ux=-dy/L,uy=dx/L;g.rn=[dx/L,dy/L];/* ring plane is normal to (dx,dy): the approach once the gate is active, else the line to the next gate */const pts=[];for(let k=0;k<=20;k++){const a=k/20*Math.PI*2;pts.push(toWorld(V(g.local.x+ux*Math.cos(a)*g.r,g.local.y+uy*Math.cos(a)*g.r,g.local.z+Math.sin(a)*g.r)));}return pts;}
 GATES.forEach((g,i)=>{g.ent=viewer.entities.add({show:false,polyline:{positions:ringPositions(g,i),width:20,material:RING}});});
 function rebuildRing(g){g.ent.polyline.positions=ringPositions(g,GATES.indexOf(g));}
