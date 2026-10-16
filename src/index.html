@@ -433,7 +433,7 @@ void main(){
   float dry=1.0-wet;
   float pave=(1.0-smoothstep(0.12,0.3,sat))*smoothstep(0.22,0.36,lum)*veg*dry;  // roads, lots and roofs read light grey in the photos; shaded foliage is darker
   float planar=1.0-smoothstep(0.05,0.22,length(fwidth(nl)));                   // facades are flat; cliffs and canopies are not
-  float wall=(1.0-smoothstep(0.15,0.5,abs(nl.z)))*veg*dry*planar*smoothstep(0.1,0.2,lum);   // dark canopies are not facades
+  float wall=(1.0-smoothstep(0.15,0.5,abs(nl.z)))*veg*dry*planar*smoothstep(0.1,0.2,lum)*smoothstep(8.0,18.0,pl.z);   // dark canopies are not facades; nor is anything below treetop height by the river (autumn reds pass every colour test)
   float along=abs(nl.y)>abs(nl.x)?pl.x:pl.y;
   vec2 wuv=vec2(along/3.0,pl.z/3.4);
   vec2 cell=floor(wuv),f=fract(wuv);
