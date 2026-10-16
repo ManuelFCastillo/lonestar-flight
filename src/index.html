@@ -431,7 +431,8 @@ void main(){
   float lum=dot(c.rgb,vec3(0.299,0.587,0.114)),mx=max(c.r,max(c.g,c.b)),sat=(mx-min(c.r,min(c.g,c.b)))/max(mx,1e-3);
   float wet=step(c.r*1.08,min(c.g,c.b))*(1.0-smoothstep(0.22,0.42,lum));   // Lady Bird Lake and the river: dark teal
   float dry=1.0-wet;
-  float pave=(1.0-smoothstep(0.12,0.3,sat))*smoothstep(0.22,0.36,lum)*veg*dry;  // roads, lots and roofs read light grey in the photos; shaded foliage is darker
+  float olive=step(c.r*0.97,c.g)*step(c.b*1.08,c.g);   // sunlit treetops: grey-olive, green level with red and above blue
+  float pave=(1.0-smoothstep(0.12,0.3,sat))*smoothstep(0.22,0.36,lum)*veg*dry*(1.0-olive);  // roads, lots and roofs read light grey in the photos; shaded foliage is darker
   float planar=1.0-smoothstep(0.05,0.22,length(fwidth(nl)));                   // facades are flat; cliffs and canopies are not
   float wall=(1.0-smoothstep(0.15,0.5,abs(nl.z)))*veg*dry*planar*smoothstep(0.1,0.2,lum)*smoothstep(8.0,18.0,pl.z);   // dark canopies are not facades; nor is anything below treetop height by the river (autumn reds pass every colour test)
   float along=abs(nl.y)>abs(nl.x)?pl.x:pl.y;
