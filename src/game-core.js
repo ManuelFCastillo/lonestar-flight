@@ -21,7 +21,14 @@
   function relBearing(hdg, dx, dy) { const rel = headingDeg(dx, dy) - hdg; return ((rel + 540) % 360) - 180; }
   function vertCue(dz) { return dz > 40 ? '▲ climb' : dz < -40 ? '▼ descend' : ''; }
   function gateHit(dist, r) { return dist < r + 7; }
-  function boundary(x, y) { const r = Math.hypot(x, y); return r > 15000 ? 'respawn' : r > 13000 ? 'warn' : 'ok'; }
+  // The play area. Past 13 km the jet is turned back toward Austin, harder the faster it goes, so even at Mach 2 it comes
+  // round well inside the 20 km hard limit; only a jet that somehow gets past that is put back over Zilker.
+  function boundary(x, y) { const r = Math.hypot(x, y); return r > 20000 ? 'respawn' : r > 13000 ? 'warn' : 'ok'; }
+  function turnBackRate(speed) { return 0.5 + Math.min(1, Math.max(0, speed / 680)) * 0.9; }   // rad/s of yaw toward home
+  // Which way to yaw (+1 left, counter-clockwise from above; -1 right) to point back at the origin. The z of r x f is positive
+  // when the heading sits counter-clockwise of straight-out, so turning further left is the short way home. (This was
+  // inverted in the game until 2026-10-16, which lined the jet up with the fence instead of turning it away.)
+  function turnBackDir(x, y, fx, fy) { return (x * fy - y * fx) >= 0 ? 1 : -1; }
 
   // ---- engine ----
   // Two-stage afterburner. Stage one is a nudge; hold it STAGE_T seconds and stage two opens the throttle for real.
@@ -152,5 +159,5 @@
   function parsePref(v, d) { return v === null || v === undefined ? d : v === '1'; }
 
   return { clamp, wrapPi, GEOID, ell, KT_PER_MS, FT_PER_M, fmtClock, fmtDist, fmtHeading, headingDeg, relBearing, vertCue, gateHit, boundary,
-    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, acceptGround, planShots, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
+    VMAX, STAGE_T, MACH1, MACH2, BOOM_KICK, BURNER, burnerStage, targetSpeed, speedCeiling, stepThrottle, stepSpeed, boomCrossing, mach2Crossing, mach, MARGIN, MAX_BANK, bankController, acceptGround, planShots, turnBackRate, turnBackDir, probeDistance, penalty, chooseManeuver, allowManeuver, PRECISE_WALL, maneuverInputs, trackFloor, parsePref };
 });

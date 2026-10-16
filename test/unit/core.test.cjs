@@ -50,11 +50,30 @@ describe('navigation', () => {
     assert.equal(G.gateHit(34.9, 28), true);
     assert.equal(G.gateHit(35, 28), false);
   });
-  test('boundary warns at 13 km and respawns at 15 km', () => {
+  test('boundary warns at 13 km and respawns only past 20 km', () => {
     assert.equal(G.boundary(0, 0), 'ok');
     assert.equal(G.boundary(12999, 0), 'ok');
     assert.equal(G.boundary(0, 13001), 'warn');
-    assert.equal(G.boundary(10607, 10607), 'respawn');  // ~15 km diagonal
+    assert.equal(G.boundary(10607, 10607), 'warn');     // ~15 km diagonal: was a respawn, and at Mach 2 read as a crash
+    assert.equal(G.boundary(14200, 14200), 'respawn');  // ~20.1 km
+  });
+
+  test('the turn-back brings a jet heading straight out at Mach 2 round well inside the hard limit', () => {
+    assert.ok(G.turnBackRate(680) > G.turnBackRate(150));
+    let x = 12900, y = 0, a = 0.2, rMax = 0; const v = 680, dt = 1 / 60;   // just inside the warning ring, flying outward
+    for (let t = 0; t < 20; t += dt) {
+      if (G.boundary(x, y) !== 'ok') a += G.turnBackDir(x, y, Math.cos(a), Math.sin(a)) * G.turnBackRate(v) * dt;   // the rule the game uses
+      x += Math.cos(a) * v * dt; y += Math.sin(a) * v * dt; rMax = Math.max(rMax, Math.hypot(x, y));
+      assert.notEqual(G.boundary(x, y), 'respawn');
+    }
+    assert.ok(rMax < 15000, 'max radius ' + Math.round(rMax));
+    assert.ok(Math.hypot(x, y) < 13000, 'it ends up back inside the warning ring');
+  });
+
+  test('turnBackDir picks the short way home', () => {
+    assert.equal(G.turnBackDir(13000, 0, Math.cos(0.3), Math.sin(0.3)), 1);    // east of home, heading a little north of east: turn left, via north
+    assert.equal(G.turnBackDir(13000, 0, Math.cos(-0.3), Math.sin(-0.3)), -1); // heading a little south of east: turn right, via south
+    assert.equal(G.turnBackDir(0, -13000, 1, 0), 1);                           // south of home heading east: turn left, to the north
   });
   test('wrapPi keeps angles in (-pi, pi]', () => {
     assert.ok(Math.abs(G.wrapPi(3 * Math.PI) - Math.PI) < 1e-9);
