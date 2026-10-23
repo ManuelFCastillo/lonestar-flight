@@ -4,7 +4,7 @@
 // game clock follows the frame rate, so anything that takes game time is polled, never timed.
 import { test as base, expect } from '@playwright/test';
 
-const SLOW = { timeout: 90_000 };   // for conditions that need game time to pass at headless frame rates
+const SLOW = { timeout: process.env.CI ? 300_000 : 90_000 };   // for conditions that need game time to pass at headless frame rates; see playwright.config.mjs for the CI budget
 
 const test = base.extend({
   // A page on the start screen, with the city stream stubbed and page errors turned into failures.
