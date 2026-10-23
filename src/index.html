@@ -660,20 +660,21 @@ function updateBoomFx(realDt){
 const smokeImg=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
   const blob=(x,y,r,a)=>{const gr=g.createRadialGradient(x,y,r*0.08,x,y,r);gr.addColorStop(0,'rgba(255,255,255,'+a+')');gr.addColorStop(0.45,'rgba(255,255,255,'+(a*0.55)+')');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(x-r,y-r,r*2,r*2);};
   blob(64,64,56,0.9);blob(44,52,30,0.8);blob(84,50,26,0.75);blob(56,86,28,0.7);blob(86,82,24,0.65);blob(66,40,20,0.6);return c;})();
+const FX={};   // pick id shared by every effect sprite and label: the ground probe excludes by id, because Cesium's ray picking checks the picked billboard, not its collection
 const smokeCol=scene.primitives.add(new C.BillboardCollection());
 const SMOKEN=window.__lsfFakeTiles?320:MOBILE?600:1500,smoke=[];   // three streams at 220 m/s put ~300 puffs a second into the air; the pool has to hold three seconds of that. The test hook keeps it small: software-rendered Chromium cannot fill 1,500 translucent sprites
-for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,rotation:Math.random()*6.283,color:new C.Color(1,0.95,0.9,0),show:false});b.setImage('puff',smokeImg);smoke.push({b,age:9,life:1,k:0.85+Math.random()*0.3,p:V(0,0,0),v:V(0,0,0)});}
+for(let i=0;i<SMOKEN;i++){const b=smokeCol.add({id:FX,position:C.Cartesian3.ZERO,sizeInMeters:true,width:4,height:4,rotation:Math.random()*6.283,color:new C.Color(1,0.95,0.9,0),show:false});b.setImage('puff',smokeImg);smoke.push({b,age:9,life:1,k:0.85+Math.random()*0.3,p:V(0,0,0),v:V(0,0,0)});}
 let smokeIdx=0;
 const nozzleImg=(function(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const r=g.createRadialGradient(64,64,0,64,64,64);
   r.addColorStop(0,'rgba(255,248,220,1)');r.addColorStop(0.3,'rgba(255,200,110,1)');r.addColorStop(0.55,'rgba(255,130,45,.85)');r.addColorStop(0.72,'rgba(255,100,30,.18)');r.addColorStop(0.85,'rgba(255,90,20,0)');g.fillStyle=r;g.fillRect(0,0,128,128);return c;})();
-const glowCol=scene.primitives.add(new C.BillboardCollection());const glow=glowCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:2.4,height:2.4,color:new C.Color(1,1,1,1),show:false});glow.setImage('nozzle',nozzleImg);const glowTmp=new C.Cartesian3(),glowFwd=new C.Cartesian3(),glowToCam=new C.Cartesian3();   // the hot nozzle while the burner is lit
+const glowCol=scene.primitives.add(new C.BillboardCollection());const glow=glowCol.add({id:FX,position:C.Cartesian3.ZERO,sizeInMeters:true,width:2.4,height:2.4,color:new C.Color(1,1,1,1),show:false});glow.setImage('nozzle',nozzleImg);const glowTmp=new C.Cartesian3(),glowFwd=new C.Cartesian3(),glowToCam=new C.Cartesian3();   // the hot nozzle while the burner is lit
 // The exhaust itself: a chain of soft camera-facing sprites down the plume axis, plus brighter knots for the shock diamonds.
 // Sprites read as gas from every angle; a cone mesh read as a glass tube from below and a swirl from behind.
 const plumeImg=(function(){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=g.createRadialGradient(32,32,0,32,32,32);
   r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(0.5,'rgba(255,255,255,.65)');r.addColorStop(0.8,'rgba(255,255,255,.2)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return c;})();
 const PLUME_N=22,PLUME_D=5,plumeCol=scene.primitives.add(new C.BillboardCollection()),plume=[],plumeKnots=[];
-for(let i=0;i<PLUME_N;i++){const b=plumeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:1,height:1,show:false});b.setImage('plume',plumeImg);plume.push(b);}
-for(let i=0;i<PLUME_D;i++){const b=plumeCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:0.5,height:0.5,show:false});b.setImage('plume',plumeImg);plumeKnots.push(b);}
+for(let i=0;i<PLUME_N;i++){const b=plumeCol.add({id:FX,position:C.Cartesian3.ZERO,sizeInMeters:true,width:1,height:1,show:false});b.setImage('plume',plumeImg);plume.push(b);}
+for(let i=0;i<PLUME_D;i++){const b=plumeCol.add({id:FX,position:C.Cartesian3.ZERO,sizeInMeters:true,width:0.5,height:0.5,show:false});b.setImage('plume',plumeImg);plumeKnots.push(b);}
 const plumeTmp=new C.Cartesian3(),plumeLocal=new C.Cartesian3();
 const PLUME_HOT=[1.0,0.80,0.62],PLUME_PINK=[0.98,0.50,0.84],PLUME_BLUE=[0.52,0.56,1.0];
 const mix3=(a,b,k)=>[a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*k];
@@ -695,7 +696,7 @@ function plumeUpdate(on){
     b.color=new C.Color(1.0,0.93,0.99,(0.95-0.13*k)*thin*(0.8+0.2*Math.sin(now*61+k)));b.show=true;}
 }
 const vapCol=scene.primitives.add(new C.BillboardCollection());
-for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:(()=>{const vb=vapCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false});vb.setImage('puff',smokeImg);return vb;})(),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
+for(let i=0;i<120;i++){const wing=i%3===0;const a=Math.random()*Math.PI*2;vap.push({b:(()=>{const vb=vapCol.add({id:FX,position:C.Cartesian3.ZERO,sizeInMeters:true,width:3,height:3,color:new C.Color(1,1,1,0),show:false});vb.setImage('puff',smokeImg);return vb;})(),a,r0:wing?0.6+Math.random()*0.8:2.0+Math.random()*1.8,x0:wing?-1.5+Math.random()*2:-2+Math.random()*4,y0:wing?(Math.random()<0.5?-1:1)*(2.5+Math.random()*3.5):0,j:Math.random()});}
 const TINT={white:[1,0.97,0.94],red:[0.96,0.14,0.10],blue:[0.12,0.32,0.96]};
 function emitSmoke(local,vel,tint){const s=smoke[smokeIdx];smokeIdx=(smokeIdx+1)%SMOKEN;C.Cartesian3.clone(local,s.p);s.tint=tint||TINT.white;if(vel){s.v.x=vel.x+(Math.random()-0.5)*4;s.v.y=vel.y+(Math.random()-0.5)*4;s.v.z=vel.z+(Math.random()-0.5)*4;}else{s.v.x=(Math.random()-0.5)*1.2;s.v.y=(Math.random()-0.5)*1.2;s.v.z=0.5+Math.random()*0.7;}s.age=0;s.life=2.8+Math.random()*1.0;s.b.show=true;}   // calmer drift keeps the ribbon a ribbon
 
@@ -707,7 +708,7 @@ const batImg=(up)=>{const c=document.createElement('canvas');c.width=48;c.height
 const BAT_UP=batImg(true),BAT_DOWN=batImg(false);
 const batCol=scene.primitives.add(new C.BillboardCollection());
 const BATN=MOBILE?900:2600,bats=[];const bridgeLocal=toLocal(-97.7453,30.2617,ell(131));
-for(let i=0;i<BATN;i++){const sz=1.35+Math.random()*1.5;const b=batCol.add({position:C.Cartesian3.ZERO,sizeInMeters:true,width:sz*2,height:sz,rotation:(Math.random()-0.5)*1.2,color:new C.Color(1,1,1,0.55+Math.random()*0.35),disableDepthTestDistance:0});b.setImage('batDown',BAT_DOWN);bats.push({b,up:false,f:7+Math.random()*7,ph:Math.random()*7,rot:b.rotation});}
+for(let i=0;i<BATN;i++){const sz=1.35+Math.random()*1.5;const b=batCol.add({id:FX,position:C.Cartesian3.ZERO,sizeInMeters:true,width:sz*2,height:sz,rotation:(Math.random()-0.5)*1.2,color:new C.Color(1,1,1,0.55+Math.random()*0.35),disableDepthTestDistance:0});b.setImage('batDown',BAT_DOWN);bats.push({b,up:false,f:7+Math.random()*7,ph:Math.random()*7,rot:b.rotation});}
 const batTmp=V(0,0,0);
 function updateBats(t){for(let i=0;i<BATN;i++){const bt=bats[i],p=(t*0.03+i/BATN)%1,j=i*0.37,k=i*1.93;let x,y,z;
   if(p<0.22){const u=p/0.22,ang=u*12+j,r=8+u*60;x=Math.cos(ang)*r;y=-Math.sin(ang)*r*0.5-35;z=4+u*44;}                      // the column boiling up out of the bridge
@@ -725,12 +726,12 @@ function rebuildRing(g){g.ent.polyline.positions=ringPositions(g,GATES.indexOf(g
 
 // labels
 const labelCol=scene.primitives.add(new C.LabelCollection());
-LANDMARKS.forEach(l=>{l.lab=labelCol.add({position:toWorld(l.local),text:l.n.toUpperCase()+(l.s?'\n'+l.s:''),font:'600 12px "Public Sans", sans-serif',fillColor:C.Color.fromCssColorString('#f4eee2'),outlineColor:new C.Color(0,0,0,0.9),outlineWidth:3,style:C.LabelStyle.FILL_AND_OUTLINE,horizontalOrigin:C.HorizontalOrigin.CENTER,verticalOrigin:C.VerticalOrigin.BOTTOM,disableDepthTestDistance:Number.POSITIVE_INFINITY,translucencyByDistance:new C.NearFarScalar(800,1,5000,0),scaleByDistance:new C.NearFarScalar(500,1,5000,0.7),show:false});});
+LANDMARKS.forEach(l=>{l.lab=labelCol.add({id:FX,position:toWorld(l.local),text:l.n.toUpperCase()+(l.s?'\n'+l.s:''),font:'600 12px "Public Sans", sans-serif',fillColor:C.Color.fromCssColorString('#f4eee2'),outlineColor:new C.Color(0,0,0,0.9),outlineWidth:3,style:C.LabelStyle.FILL_AND_OUTLINE,horizontalOrigin:C.HorizontalOrigin.CENTER,verticalOrigin:C.VerticalOrigin.BOTTOM,disableDepthTestDistance:Number.POSITIVE_INFINITY,translucencyByDistance:new C.NearFarScalar(800,1,5000,0),scaleByDistance:new C.NearFarScalar(500,1,5000,0.7),show:false});});
 
 // resolve anchors against the streamed ground, a few per frame
 const cartoTmp=new C.Cartographic();
-const EXCL=partEntities.concat(GATES.map(g=>g.ent),[labelCol,batCol,smokeCol,vapCol,flame,halo,glowCol,plumeCol]);   // never let the probe land on the jet's own effects
-window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},get replayCam(){return replay?replayCam():null;},get replayPlan(){return replay&&replay.plan?replay.plan.map(x=>x.cam+'@'+x.rate):null;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
+const EXCL=partEntities.concat(GATES.map(g=>g.ent),[flame,halo,FX]);   // never let the probe land on the jet's own effects. Sprites and labels are excluded through their shared pick id: listing their collections did nothing, so the stage-two plume read as ground at the jet's own height and 'crashed' it at Mach 2
+window.__lsf={scene,get tileset(){return tileset;},get jetModel(){return jetModel;},get jetShow(){return jet.show;},get recording(){return REC;},get replaying(){return !!replay;},get replayCam(){return replay?replayCam():null;},get replayPlan(){return replay&&replay.plan?replay.plan.map(x=>x.cam+'@'+x.rate):null;},startReplay,endReplay,setReplayCam,get autopilot(){return autopilot;},set autopilot(v){autopilot=!!v;},get gate(){return gate;},get probeExcl(){return EXCL;},probe:true};   // debug hook: tile statistics and a switch for the terrain probe
 function sampleGround(lon,lat){if(!scene.sampleHeightSupported||!tilesReady||!window.__lsf.probe)return undefined;cartoTmp.longitude=C.Math.toRadians(lon);cartoTmp.latitude=C.Math.toRadians(lat);cartoTmp.height=0;try{const h=scene.sampleHeight(cartoTmp,EXCL);return (h===undefined||h<-40||h>620)?undefined:h;}catch(e){return undefined;}}   // Austin ground is 120-300 m; anything else is a coarse root tile's face, which can sit kilometres off, so it is ignored
 const gTmp=new C.Cartesian3();
 function groundAtLocal(x,y,z){gTmp.x=x;gTmp.y=y;gTmp.z=z;const c=C.Cartographic.fromCartesian(toWorld(gTmp,gTmp));return sampleGround(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude));}

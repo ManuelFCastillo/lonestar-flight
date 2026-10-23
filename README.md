@@ -28,7 +28,7 @@ npm test
 ```
 
 - `npm run test:unit` runs the Node test runner against `src/game-core.js`, the dependency-free module that holds the flight math, HUD formatting, the pilot-assist decision table and the maneuver timelines, plus a check that `build.mjs` injects the token.
-- `npm run test:e2e` runs Playwright against the built page in headless Chromium. It boots the real Cesium viewer but swaps the city stream for a test hook (`window.__lsfFakeTiles`), so it needs no token and no Google tiles, then flies the jet with the keyboard: takeoff, throttle, roll, reset, pause, camera, smoke, assist, inverted pitch persistence, free-flight HUD.
+- `npm run test:e2e` runs Playwright against the built page in headless Chromium. It boots the real Cesium viewer but swaps the city stream for a test hook (`window.__lsfFakeTiles`), so it needs no token and no Google tiles, then flies the jet with the keyboard: takeoff, throttle, roll, reset, pause, camera, smoke, assist, inverted pitch persistence, free-flight HUD, and a supersonic run with the assist off that samples the ground probe every frame to prove it never reads the jet's own exhaust (the Mach 2 phantom crash of October 2026).
 
 GitHub Actions runs both on every push and pull request (`.github/workflows/test.yml`).
 

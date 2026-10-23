@@ -185,3 +185,40 @@ test('free flight hides the gate panel and the clock', async ({ page }) => {
   await expect(page.locator('#gate')).toBeHidden();
   await expect(page.locator('#clock')).toBeHidden();
 });
+
+test('the ground probe never reads the jet\'s own exhaust: the supersonic run with the assist off is not a crash', async ({ page, flight }) => {
+  // With the city stubbed out there is nothing under the jet, so a ground reading can only be the probe landing on the
+  // jet's own sprites. Before 2026-10-20 the plume sprites were "excluded" by listing their collections, which Cesium's
+  // ray picking ignores, so the afterburner plume read as ground at the jet's own altitude and splashed it at Mach 2.
+  test.slow();                                                   // the supersonic run takes a while at software-rendered frame rates
+  const width = () => page.locator('#thr').evaluate((el) => parseFloat(el.style.width));
+  await page.keyboard.press('KeyX');
+  await expect(flight.hud('pAssist')).not.toHaveClass(/on/);
+  await flight.holdUntil('KeyW', async () => (await width()) > 99);
+  await page.keyboard.down('Shift');
+  let probe;
+  try {
+    await expect.poll(() => flight.hud('spdU').textContent(), SLOW).toContain('M 1');
+    // Every frame from Mach 1 to Mach 2, sample the ground under the jet twice: with no exclusions (so the plume is hit
+    // whenever it sits under the probe) and with the game's exclusion list (which must never see it).
+    probe = await page.evaluate(() => new Promise((resolve) => {
+      const C = Cesium, scene = window.__lsf.scene, out = { frames: 0, bareNear: 0, gameNear: 0, gameAny: 0, splash: 0 };
+      const tick = () => {
+        const p = C.Matrix4.getTranslation(window.__lsf.jetModel.modelMatrix, new C.Cartesian3()), c = C.Cartographic.fromCartesian(p);
+        const at = (excl) => scene.sampleHeight(new C.Cartographic(c.longitude, c.latitude, 0), excl);
+        const bare = at([]), game = at(window.__lsf.probeExcl);
+        out.frames++;
+        if (bare !== undefined && Math.abs(bare - c.height) < 40) out.bareNear++;
+        if (game !== undefined) { out.gameAny++; if (Math.abs(game - c.height) < 40) out.gameNear++; }
+        if (/Splash/.test(document.getElementById('toast').textContent)) out.splash++;
+        if (/M 2/.test(document.getElementById('spdU').textContent) || out.frames >= 1500) resolve(out); else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }));
+  } finally { await page.keyboard.up('Shift'); }
+  expect(probe.bareNear).toBeGreaterThan(0);                     // the plume was there to be hit, so the check is live
+  expect(probe.gameNear).toBe(0);                                // and the game's probe never took it for ground
+  expect(probe.gameAny).toBe(0);                                 // nothing else under the jet either: the city is stubbed out
+  expect(probe.splash).toBe(0);
+  await expect(flight.hud('hud')).toHaveClass(/on/);
+});
